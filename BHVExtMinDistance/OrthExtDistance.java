@@ -948,14 +948,14 @@ public class OrthExtDistance{
             
             for (int i = 0; i < S1.size(); i++){
                 gradientxs1[i] = gradient1[S1.get(i)] - gradient1[B1.get(OE1.getBackMap(S1.get(i)))];
-                if((gradientxs1[i] < -0.0000000001) || (gradientxs1[i] > 0.0000000001)){
+                if((gradientxs1[i] < -0.00000001) || (gradientxs1[i] > 0.00000001)){
                     gradient_small = false;
                 }
             }
             
             for (int i = 0; i < S2.size(); i++){
                 gradientxs2[i] = gradient2[S2.get(i)] - gradient2[B2.get(OE2.getBackMap(S2.get(i)))];
-                if((gradientxs2[i] < -0.0000000001) || (gradientxs2[i] > 0.0000000001)){
+                if((gradientxs2[i] < -0.00000001) || (gradientxs2[i] > 0.00000001)){
                     gradient_small = false;
                 }
             }
@@ -1465,7 +1465,7 @@ public class OrthExtDistance{
                     tau = tau_max/2;
                 }
                 //System.out.println("    Prev tau = " + tau);
-                while(((derivTau < -0.000000000001) || (derivTau > 0.000000000001))){ //&&(counterWhile < 50)
+                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001))){ //&&(counterWhile < 50)
                     counterWhile++;
                     //System.out.println("   Inside the tau while loop "+counterWhile);
                     tau = (tau_max + tau_min)/2;
