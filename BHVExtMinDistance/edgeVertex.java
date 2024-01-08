@@ -32,6 +32,7 @@ public class edgeVertex{
     }
     
     //Function to print the bipartition in the edge in a nice format
+    //TO DO: Use nice printer here in the future
     public String toStringVerbose(Vector<String> cLeafSet){
         return this.edge.toStringVerbose(cLeafSet);
     }

@@ -25,6 +25,19 @@ public class edgeCrossGraph{
     private List<Set<Integer>> Bucket;
     private List<Vector<Integer>> MIS; //List of all maximal independent sets (only the IDs of the edge vertices).
     
+    //My own function to determine if splits crosses
+    private boolean Crosses(Bipartition Split1, Bipartition Split2, int NumberLeaves){
+        if ((Split1.disjointFrom(Split2) || Split1.contains(Split2) || Split2.contains(Split1))){
+            return false;
+        } else {
+            Bipartition temp1 = Split1.clone();
+            temp1.complement(NumberLeaves);
+            Bipartition temp2 = Split2.clone();
+            temp2.complement(NumberLeaves);
+            
+            return(!temp1.disjointFrom(temp2));
+        }
+    }
     
     //Constructor
     public edgeCrossGraph(PhyloTree T, Vector<String> cLeafSet){
@@ -62,6 +75,11 @@ public class edgeCrossGraph{
             
         }
         
+        
+        //System.out.println("Org 2 Comp is: " + Arrays.toString(orgLeaves2compLeaves));
+        
+        //System.out.println("original Leaves" + originalLeaves);
+        
         //We iterate over the set of complete leaves to find which leafs must be added to the original tree.
         int count = 0;
         for (int i = 0; i < cLeafSet.size(); i++){
@@ -70,6 +88,9 @@ public class edgeCrossGraph{
                 count++;
             }
         }
+        
+        //System.out.println("listAddedLeaves: " + Arrays.toString(listAddedLeaves));
+        //System.out.println("Number of leaves added = " + l);
         
         //For each edge in the original tree, we loop through all the ways the extra leaves can be added to both parts of the Bipartition in that edge, and add the resulting edges after doing that to the vertices of the graph. 
         Vector<edgeVertex> VertexList = new Vector<edgeVertex>();
@@ -87,6 +108,7 @@ public class edgeCrossGraph{
                     moldPartition.set(orgLeaves2compLeaves[i]);
                 }
             }
+            //System.out.println("Mold Partition for " + VertexCount + " is : " + moldPartition);
             //Loop on all the ways to add the new leaves to moldPartition
 			for (int bitc = 0; bitc < Math.pow(2,l); bitc++){
                 BitSet tempPartition = (BitSet) moldPartition.clone();
@@ -102,6 +124,8 @@ public class edgeCrossGraph{
                 if (!tempPartition.get(0)){//We always use the split including the first leaf as the representative
                     tempPartition.flip(0,cLeafSet.size());
                 }
+                
+                //System.out.println("One temp Partition for " + VertexCount + " is : " + tempPartition);
                 PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
                 edgeVertex newV = new edgeVertex(VertexCount, newE);
                 VertexList.add(newV);
@@ -120,13 +144,26 @@ public class edgeCrossGraph{
             List<edgeVertex> tempAdjList = new ArrayList<edgeVertex>();
             while(vertexIter2.hasNext()){
                 edgeVertex potAdj = (edgeVertex) vertexIter2.next();
-                if (eKey.getEdge().asSplit().crosses(potAdj.getEdge().asSplit())){
+                //System.out.println("For the eKey = " + eKey.getEdge().asSplit().toString());
+                //System.out.println("And the potAdj = " + potAdj.getEdge().asSplit().toString());
+                //System.out.println("Disjoint part = " + eKey.getEdge().asSplit().disjointFrom(potAdj.getEdge().asSplit()));
+                //System.out.println("Crosses according to my own function: " + Crosses(eKey.getEdge().asSplit(), potAdj.getEdge().asSplit(), cLeafSet.size()));
+                if (Crosses(eKey.getEdge().asSplit(), potAdj.getEdge().asSplit(), cLeafSet.size())){
+                    //System.out.println("It crosses");
                     tempAdjList.add(potAdj);
                 }
             }
             
             adjVertices.put(eKey, tempAdjList);
             orderedVertices.add(eKey);
+        }
+        
+        //System.out.println("The entire graph is: ");
+        for (edgeVertex keey : adjVertices.keySet()){
+            //System.out.println("For vertex " + keey.toStringVerbose(cLeafSet));
+            for (edgeVertex neigh : adjVertices.get(keey)){
+                System.out.println("     " + neigh.toStringVerbose(cLeafSet));
+            }
         }
         
         //We initialize the vector of all Maximal Independent Sets, but it will be filled up in an independent function.
@@ -260,7 +297,7 @@ public class edgeCrossGraph{
             List<edgeVertex> tempAdjList = new ArrayList<edgeVertex>();
             while(vertexIter2.hasNext()){
                 edgeVertex potAdj = (edgeVertex) vertexIter2.next();
-                if (eKey.getEdge().asSplit().crosses(potAdj.getEdge().asSplit())){
+                if (Crosses(eKey.getEdge().asSplit(), potAdj.getEdge().asSplit(), cLeafSet.size())){
                     tempAdjList.add(potAdj);
                 }
             }

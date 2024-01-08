@@ -18,7 +18,7 @@ public class ExtensionSpace{
     //Vector indicating which leaves in the completeLeafSet are part of the Original Tree
     private BitSet originalLeaves; 
     //Vector that maps the leaves in the original tree to the leaves in the complete leaf set.
-    private int[] orgLeaves2compLeaves; 
+    //private int[] orgLeaves2compLeaves; 
     //All leaves in the 'maximal' BHV space.
     private Vector<String> completeLeafSet; 
     
@@ -37,18 +37,20 @@ public class ExtensionSpace{
         
         originalLeaves = new BitSet(cLeafSet.size());
         Vector<String> oLeafSet = polyAlg.Tools.myVectorCloneString(t.getLeaf2NumMap());
-        orgLeaves2compLeaves = new int[oLeafSet.size()]; 
+        
+        //REALIZED I DO NOT USE THIS HERE, AND CALCULATE AGAIN INSIDE edgeCrossGraph. COMMENT --> DELETE WHEN SURE ALL GOOD
+        //orgLeaves2compLeaves = new int[oLeafSet.size()]; 
         
         //For each leaf in the original tree's leaf set, we find its position in the complete set, and modify the arrays and BitSet accordingly. 
-        for (int i = 0; i < oLeafSet.size(); i++){
-            int temp = cLeafSet.indexOf(oLeafSet.get(i));
-            if (temp == -1){
-                System.err.println("Error: The original tree has a leaf that is not part of the complete leaf set");
-			    System.exit(1);
-            }
-            orgLeaves2compLeaves[i] = temp;
-            originalLeaves.set(temp);
-        }
+        //for (int i = 0; i < oLeafSet.size(); i++){
+        //    int temp = cLeafSet.indexOf(oLeafSet.get(i));
+        //    if (temp == -1){
+        //        System.err.println("Error: The original tree has a leaf that is not part of the complete leaf set");
+		//	    System.exit(1);
+        //    }
+        //    orgLeaves2compLeaves[i] = temp;
+        //    originalLeaves.set(temp);
+        //}
         
         //Create the edgeCrossGraph calling its constructor with this tree and complete leaf set.
         edgeCrossGraph GraphAllEdges = new edgeCrossGraph(t, cLeafSet);
@@ -76,18 +78,19 @@ public class ExtensionSpace{
         
         originalLeaves = new BitSet(cLeafSet.size());
         Vector<String> oLeafSet = polyAlg.Tools.myVectorCloneString(t.getLeaf2NumMap());
-        orgLeaves2compLeaves = new int[oLeafSet.size()]; 
+        //orgLeaves2compLeaves = new int[oLeafSet.size()]; 
         
+        //REALIZED I DO NOT USE THIS HERE, AND CALCULATE AGAIN INSIDE edgeCrossGraph. COMMENT --> DELETE WHEN SURE ALL GOOD
         //For each leaf in the original tree's leaf set, we find its position in the complete set, and modify the arrays and BitSet accordingly. 
-        for (int i = 0; i < oLeafSet.size(); i++){
-            int temp = cLeafSet.indexOf(oLeafSet.get(i));
-            if (temp == -1){
-                System.err.println("Error: The original tree has a leaf that is not part of the complete leaf set");
-			    System.exit(1);
-            }
-            orgLeaves2compLeaves[i] = temp;
-            originalLeaves.set(temp);
-        }
+        //for (int i = 0; i < oLeafSet.size(); i++){
+        //    int temp = cLeafSet.indexOf(oLeafSet.get(i));
+        //    if (temp == -1){
+        //        System.err.println("Error: The original tree has a leaf that is not part of the complete leaf set");
+        //            System.exit(1);
+        //    }
+        //    orgLeaves2compLeaves[i] = temp;
+        //    originalLeaves.set(temp);
+        //}
         
         //Create the edgeCrossGraph calling its constructor with this tree and complete leaf set.
         edgeCrossGraph GraphAllEdges = new edgeCrossGraph(t, cLeafSet, restricted);
