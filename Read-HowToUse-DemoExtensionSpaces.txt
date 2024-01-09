@@ -1,0 +1,34 @@
+BHVExtMinDistance is a Java-based package to compute the distance between certain subsets of trees in the BHV tree space, and the DemoExtensionSpaces.java is an easy to use code that employs this package to compute the distance between two extension spaces as defined by Ren, et.al. (2017) and Gillian and Owen (2019). 
+
+As such, the code receives as an input: 
+- two trees in Newick format
+- A list of leaf labels consisting on the leafs of the BHV space to which the tree extension spaces belong. 
+
+Computes the extension space of each tree in the BHV space of trees with leaf set with the labels provided, and offers a printed description of it which includes: 
+
+- How many orthants contain part of this extension space.
+- The system of equations that describe the trees belonging to the extension space in each orthant. 
+- A representative tree of the extension space in each orthant. 
+
+And it computes the distance between the two extension spaces, meaning, it finds the pair of trees (one in each extension space) that are closer. For this, it considers all possible orthant pairs (one orthant belonging to the first extension space and one orthant belonging to the second space), and finds which trees in the extension space in those particular orthant pairs are closer. It reports: 
+
+- It sorts the orthant pairs from which produces the smallest geodesic to the longest. 
+- For each orthant pair, it reports the trees that produces the smallest geodesic and reports the distance in between them. 
+
+As such, the first distance reported is the distance between the extension spaces, and the best trees for this orthant pair are the ones that produce the shortest geodesic overall. 
+
+To use the DemoExtensionSpace.java code, you will need to have the packages:
+- distanceAlg1 by Megan Owen (Github: megan-owen)
+- PolyAlg by Megan Owen
+- BHVExtMinDistance by Maria Valdez-Cabrera (MariaAVC)
+
+and you can either run
+        java DemoExtensionSpaces.java
+        
+which will prompt you to enter each tree manually in Newich format and the list of leaf labels afterwards. Or you can run
+        java DemoExtensionSpaces.java <File name>
+        
+with the name of the file containing the information for trees and leaves. 
+
+EXAMPLE: 
+        java DemoExtensionSpaces.java TreesForDemo.txt

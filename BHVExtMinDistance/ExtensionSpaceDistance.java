@@ -161,7 +161,7 @@ public class ExtensionSpaceDistance{
     public void PrintSummary(boolean withTrees){
         System.out.println("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs");
         for(int i = 0; i < orderedOrthExtDistances.size(); i++){
-            System.out.println("Pair "+ i +" from Orthant pair (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ") the distance is " + orderedOrthExtDistances.get(i).getDistance());
+            System.out.println("Pair "+ i +": For orthant pair (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ") the distance is " + orderedOrthExtDistances.get(i).getDistance());
             if (withTrees){
                 PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                 System.out.println("  Best Tree 1: ");
@@ -191,7 +191,7 @@ public class ExtensionSpaceDistance{
             FileWriter myWriter = new FileWriter(fileName);
             myWriter.write("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs \n");
             for(int i = 0; i < orderedOrthExtDistances.size(); i++){
-                myWriter.write("Pair "+ i +" from Orthant pair (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ") the distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
+                myWriter.write("Pair "+ i +": For orthant pair (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ") the distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
                 if(withTrees){
                     PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                     myWriter.write("  Best Tree 1: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getFirstTree()) + "\n \n");
