@@ -46,13 +46,13 @@ public class ExtensionSpaceDistance{
         for (int k1 = 0; k1 < oNum1; k1++){
             OrthExt OE1 = OEs1.get(k1);
             for (int k2 = 0; k2 < oNum2; k2++){
-                System.out.println("************");
-                System.out.println("STARTING O pair ("+k1+", "+k2+")");
+                //System.out.println("************");
+                //System.out.println("STARTING O pair ("+k1+", "+k2+")");
                 OrthExt OE2 = OEs2.get(k2);
                 OrthExtDistance tempOED = new OrthExtDistance(OE1, OE2);
-                System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
-                System.out.println("************");
-                System.out.println("");
+                //System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
+                //System.out.println("************");
+                //System.out.println("");
                 
                 boolean Added = false;
                 for(int i = 0; i < orderedOrthExtDistances.size(); i++){
@@ -88,20 +88,24 @@ public class ExtensionSpaceDistance{
         Vector<OrthExt> OEs1 = ES1.getOrthExts();
         Vector<OrthExt> OEs2 = ES2.getOrthExts();
         
-        int oNum1 = OEs1.size();
-        int oNum2 = OEs2.size();
+        int oNum1 = 5;// OEs1.size();
+        int oNum2 = 5; //OEs2.size();
         
         //For each pair of orthant extensions in the extension spaces we compute the Orthant Extension Distances in between them, find how it compares to the other distances already added to the list, and we add it to the correct position, also adding the orthants that produced this distance to each the list of orthants. 
         for (int k1 = 0; k1 < oNum1; k1++){
             OrthExt OE1 = OEs1.get(k1);
             for (int k2 = 0; k2 < oNum2; k2++){
-                //System.out.println("************");
-                //System.out.println("STARTING O pair ("+k1+", "+k2+")");
+                System.out.println("************");
+                System.out.println("STARTING O pair ("+k1+", "+k2+")");
                 OrthExt OE2 = OEs2.get(k2);
+                long Start = System.currentTimeMillis();
                 OrthExtDistance tempOED = new OrthExtDistance(OE1, OE2, restricted);
-                //System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
-                //System.out.println("************");
-                //System.out.println("");
+                long End = System.currentTimeMillis();
+                double TimeSeconds = ((double)(End - Start))/1000;
+                System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
+                System.out.println("Time needed: " + TimeSeconds);
+                System.out.println("************");
+                System.out.println("");
                 
                 boolean Added = false;
                 for(int i = 0; i < orderedOrthExtDistances.size(); i++){
@@ -158,10 +162,10 @@ public class ExtensionSpaceDistance{
         return bestGeode;
     }
     
-    public void PrintSummary(boolean withTrees){
+    public void PrintSummary(boolean withTrees, boolean withIterCount){
         System.out.println("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs");
         for(int i = 0; i < orderedOrthExtDistances.size(); i++){
-            System.out.println("Pair "+ i +": For orthant pair (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ") the distance is " + orderedOrthExtDistances.get(i).getDistance());
+            System.out.println("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance());
             if (withTrees){
                 PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                 System.out.println("  Best Tree 1: ");
@@ -170,11 +174,36 @@ public class ExtensionSpaceDistance{
                 System.out.println("  Best Tree 2: ");
                 System.out.println(treePrinter.toString(orderedOrthExtDistances.get(i).getSecondTree()));
             }
+            if (withIterCount){
+                System.out.println("   Number of Iterations: " + orderedOrthExtDistances.get(i).getIterCount());
+            }
             System.out.println("---------------------------------------------------------------");
         }
     }
     
-    public void PrintSummary(boolean withTrees, String fileName){
+    public void PrintSummary(boolean withTrees, boolean withIterCount, int NumOrthants){
+        if (NumOrthants < 1){
+            System.out.println("The number of orthant pairs to be printed should be at least 1");
+        }
+        System.out.println("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs");
+        for(int i = 0; i < NumOrthants; i++){
+            System.out.println("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance());
+            if (withTrees){
+                PhyloNicePrinter treePrinter = new PhyloNicePrinter();
+                System.out.println("  Best Tree 1: ");
+                System.out.println(treePrinter.toString(orderedOrthExtDistances.get(i).getFirstTree()));
+                System.out.println("");
+                System.out.println("  Best Tree 2: ");
+                System.out.println(treePrinter.toString(orderedOrthExtDistances.get(i).getSecondTree()));
+            }
+            if (withIterCount){
+                System.out.println("   Number of Iterations: " + orderedOrthExtDistances.get(i).getIterCount());
+            }
+            System.out.println("---------------------------------------------------------------");
+        }
+    }
+    
+    public void PrintSummary(boolean withTrees, boolean withIterCount, String fileName){
         try {
             File myObj = new File(fileName);
             if (myObj.createNewFile()) {
@@ -191,11 +220,55 @@ public class ExtensionSpaceDistance{
             FileWriter myWriter = new FileWriter(fileName);
             myWriter.write("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs \n");
             for(int i = 0; i < orderedOrthExtDistances.size(); i++){
-                myWriter.write("Pair "+ i +": For orthant pair (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ") the distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
+                myWriter.write("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
                 if(withTrees){
                     PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                     myWriter.write("  Best Tree 1: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getFirstTree()) + "\n \n");
                     myWriter.write("  Best Tree 2: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getSecondTree()) + "\n");   
+                }
+                if (withIterCount){
+                    myWriter.write("   Number of Iterations: " + orderedOrthExtDistances.get(i).getIterCount());
+                }
+                myWriter.write("---------------------------------------------------------------\n");
+                myWriter.write(" \n");
+            }
+            myWriter.close();
+            System.out.println("Successfully wrote the report.");
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+        
+    }
+    
+    public void PrintSummary(boolean withTrees, boolean withIterCount, String fileName, int NumOrthants){
+        try {
+            File myObj = new File(fileName);
+            if (myObj.createNewFile()) {
+                System.out.println("Report created in: " + myObj.getName());
+            } else {
+                System.out.println("Report already exists in: " + myObj.getName());
+            }
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+        
+        try {
+            FileWriter myWriter = new FileWriter(fileName);
+            if (NumOrthants < 1){
+                myWriter.write("The number of orthant pairs to be printed should be at least 1");
+            }
+            myWriter.write("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs \n");
+            for(int i = 0; i < NumOrthants; i++){
+                myWriter.write("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
+                if(withTrees){
+                    PhyloNicePrinter treePrinter = new PhyloNicePrinter();
+                    myWriter.write("  Best Tree 1: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getFirstTree()) + "\n \n");
+                    myWriter.write("  Best Tree 2: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getSecondTree()) + "\n");   
+                }
+                if (withIterCount){
+                    myWriter.write("   Number of Iterations: " + orderedOrthExtDistances.get(i).getIterCount());
                 }
                 myWriter.write("---------------------------------------------------------------\n");
                 myWriter.write(" \n");

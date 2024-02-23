@@ -49,6 +49,18 @@ public class PhyloNicePrinter{
         
     }
     
+    public String toString(Bipartition bip, Vector<String> Leaf2Num){
+        Bipartition comp = bip.clone();
+        comp.complement(Leaf2Num.size());
+        return("{"+bip.toStringVerbose(Leaf2Num)+"|"+comp.toStringVerbose(Leaf2Num)+"}");
+    }
+    
+    public String toString(PhyloTreeEdge e, Vector<String> Leaf2Num){
+        Bipartition eClone = e.getOriginalEdge().clone();
+        eClone.complement(Leaf2Num.size());
+        return("{" + e.getOriginalEdge().toStringVerbose(Leaf2Num) + "|" + eClone.toStringVerbose(Leaf2Num) + "} "+e.getAttribute().toString());
+    }
+    
     public String toString(Geodesic Geo, Vector<String> Leaf2Num){
         DecimalFormat d8o = new DecimalFormat("#0.########");
         Vector<PhyloTreeEdge> commonEdges = Geo.getCommonEdges();

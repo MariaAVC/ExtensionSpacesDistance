@@ -22,6 +22,16 @@ public class OrthExtDistance{
     //Shorter distance in between the orthant extension space.
     private double Distance;
     private Geodesic FinalGeode;//Shorter geodesic
+    private int IterCount; //Number of iterations used to compute the distance. 
+    
+    //Some extra variables to manage current trees in both orthant extension spaces
+    private int[] cur1Axis2Edges;
+    private int[] cur2Axis2Edges;
+    private Vector<Integer> cur1Edges2Axis;
+    private Vector<Integer> cur2Edges2Axis;
+    
+    private Map<Integer, Integer> ET1toET2; //These HashMaps serve to point consequential edges towards the common
+    private Map<Integer, Integer> ET2toET1; //inconsequential in the other tree. 
     
     //Quick function to determine if two BitSets represent the same bipartition.
     private boolean equivalentBip(BitSet Bit1, BitSet Bit2, int numberLeaves){
@@ -60,12 +70,17 @@ public class OrthExtDistance{
     }
     
     //Constructor
-    public OrthExtDistance(OrthExt OE1, OrthExt OE2){
+    private void Constructor1(OrthExt OE1, OrthExt OE2){
         PhyloNicePrinter treePrinter = new PhyloNicePrinter();
         //We start by the starting trees in each orthant extension.
         PhyloTree T1 = new PhyloTree(OE1.getStartTree());
         PhyloTree T2 = new PhyloTree(OE2.getStartTree());
         
+        cur1Axis2Edges = OE1.getCloneAxis2Edges();
+        cur2Axis2Edges = OE2.getCloneAxis2Edges();
+        
+        cur1Edges2Axis = OE1.getCloneEdges2Axis();
+        cur2Edges2Axis = OE2.getCloneEdges2Axis();
         
         //Find the the geodesic in between these trees. 
         Geodesic tempGeode = getGeodesic(T1, T2, null);
@@ -610,7 +625,7 @@ public class OrthExtDistance{
                 int counterWhile = 0;
                 tau = 0.1;
                 if (tau > tau_max/2){
-                    System.out.println("tau initial changed");
+                    //System.out.println("tau initial changed");
                     tau = tau_max/2;
                 }
                 
@@ -750,24 +765,132 @@ public class OrthExtDistance{
         Tree2 = T2;
         FinalGeode = tempGeode;
         Distance = FinalGeode.getDist();
+        IterCount = iterCount;
         
-    }// end of Constructor
+    }// end of Constructor1
     
-    //Second constructor that allows for restricted or unrestricted case. 
     
-    //Constructor 2
-    public OrthExtDistance(OrthExt OE1, OrthExt OE2, boolean restricted){
-        PhyloNicePrinter treePrinter = new PhyloNicePrinter();
-        //We start by the starting trees in each orthant extension.
+    public OrthExtDistance(OrthExt OE1, OrthExt OE2){
+        Constructor1(OE1, OE2);
+    }
+    
+    //Second constructor for the unrestricted case. 
+    
+    private PhyloTree[] NewMutualTrees(OrthExt OE1, OrthExt OE2){
         PhyloTree T1 = new PhyloTree(OE1.getStartTree());
         PhyloTree T2 = new PhyloTree(OE2.getStartTree());
+        
+        EdgeAttribute[] EAT1 = T1.getCopyLeafEdgeAttribs();
+        EdgeAttribute[] EAT2 = T2.getCopyLeafEdgeAttribs();
+        
+        for (int i = 0; i < OE1.getCompleteLeafSet().size(); i++){
+            if ((OE1.getCompLeaves2orgLeaves(i) == -1) && (OE2.getCompLeaves2orgLeaves(i) != -1)){
+                EAT1[i] = EAT2[i].clone();
+            }
+            if ((OE2.getCompLeaves2orgLeaves(i) == -1) && (OE1.getCompLeaves2orgLeaves(i) != -1)){
+                EAT2[i] = EAT1[i].clone();
+            }
+        }
+        
+        //T1.setLeafEdgeAttribs(EAT1);
+        //T2.setLeafEdgeAttribs(EAT2);
+        
+        Vector<PhyloTreeEdge> T1Edges = polyAlg.Tools.myVectorClonePhyloTreeEdge(T1.getEdges());
+        Vector<PhyloTreeEdge> T2Edges = polyAlg.Tools.myVectorClonePhyloTreeEdge(T2.getEdges());
+        
+        int orgNumLeaves1 = OE1.getOriginalLeaves().cardinality();
+        int orgNumLeaves2 = OE2.getOriginalLeaves().cardinality();
+        
+        for (int i = orgNumLeaves1; i < OE1.getBackMap().length; i++){
+            if(OE1.getBackMap(i) == -1){
+                for (int j = 0; j < T2Edges.size(); j++){
+                    PhyloTreeEdge e = T2Edges.get(j);
+                    if (e.sameBipartition(OE1.getOrthantAxis(i-orgNumLeaves1))){
+                        cur1Axis2Edges[i-orgNumLeaves1] = T1Edges.size();
+                        cur1Edges2Axis.add(Integer.valueOf(i-orgNumLeaves1));
+                        ET2toET1.put(Integer.valueOf(j), Integer.valueOf(T1Edges.size()));
+                        PhyloTreeEdge eCl = e.clone();
+                        eCl.setOriginalID(T1Edges.size());
+                        T1Edges.add(eCl);
+                    }
+                }
+            }
+        }
+        
+        for (int i = orgNumLeaves2; i < OE2.getBackMap().length; i++){
+            if(OE2.getBackMap(i) == -1){
+                for (int j = 0; j < T1Edges.size(); j++){
+                    PhyloTreeEdge e = T1Edges.get(j);
+                    if (e.sameBipartition(OE2.getOrthantAxis(i-orgNumLeaves2))){
+                        cur2Axis2Edges[i-orgNumLeaves2] = T2Edges.size();
+                        cur2Edges2Axis.add(Integer.valueOf(i-orgNumLeaves2));
+                        ET1toET2.put(Integer.valueOf(j), Integer.valueOf(T2Edges.size()));
+                        PhyloTreeEdge eCl = e.clone();
+                        eCl.setOriginalID(T2Edges.size());
+                        T2Edges.add(eCl);
+                    }
+                }
+            }
+        }
+        
+        /*for(int i = 0; i < OE1.getOrthantAxis().size(); i++){
+            if(cur1Axis2Edges[i] == -1){
+                double[] tempVecEA = {0};
+                EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                PhyloTreeEdge tempE = new PhyloTreeEdge(OE1.getOrthantAxis(i), tempEA, T1Edges.size());
+                T1Edges.add(tempE);
+            }
+        }
+        
+        for(int i = 0; i < OE2.getOrthantAxis().size(); i++){
+            if(cur2Axis2Edges[i] == -1){
+                double[] tempVecEA = {0};
+                EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                PhyloTreeEdge tempE = new PhyloTreeEdge(OE2.getOrthantAxis(i), tempEA, T2Edges.size());
+                T2Edges.add(tempE);
+            }
+        }*/
+        
+        //T1.setEdges(T1Edges);
+        //T2.setEdges(T2Edges);
+        
+        PhyloTree[] NewArray = new PhyloTree[2];
+        NewArray[0] = new PhyloTree(T1Edges, T1.getLeaf2NumMap(), EAT1, false);
+        NewArray[1] = new PhyloTree(T2Edges, T2.getLeaf2NumMap(), EAT2, false);
+        
+        return(NewArray);
+    }
+    
+    //Constructor 2
+    private void Constructor2(OrthExt OE1, OrthExt OE2){
+        PhyloNicePrinter treePrinter = new PhyloNicePrinter();
+        //We start by the starting trees in each orthant extension.
+        
+        cur1Axis2Edges = OE1.getCloneAxis2Edges();
+        cur2Axis2Edges = OE2.getCloneAxis2Edges();
+        
+        cur1Edges2Axis = OE1.getCloneEdges2Axis();
+        cur2Edges2Axis = OE2.getCloneEdges2Axis();
+        
+        ET1toET2 = new HashMap<>();
+        ET2toET1 = new HashMap<>();
+        
+        PhyloTree[] NewStartingTrees = NewMutualTrees(OE1, OE2);
+        
+        PhyloTree T1 = new PhyloTree(NewStartingTrees[0]);
+        PhyloTree T2 = new PhyloTree(NewStartingTrees[1]);
+        
         
         
         //Find the the geodesic in between these trees. 
         Geodesic tempGeode = getGeodesic(T1, T2, null);
         
-        //System.out.println("");
-        //System.out.println("PROCESSING THE DISTANCE ALGORITHM... Starting at distance "+ tempGeode.getDist());
+        /*System.out.println("");
+        System.out.println("PROCESSING THE DISTANCE ALGORITHM... Starting at distance "+ tempGeode.getDist());
+        System.out.println("With T1: " + treePrinter.toString(T1) + "\n");
+        System.out.println("With T2: " + treePrinter.toString(T2) + "\n");
+        
+        System.out.println("The number of ratios is: " + tempGeode.getRS().size());*/
         
         //Some useful counters
         int k1 = OE1.getDim();//Dimension of the first Orthant Extension Space
@@ -775,13 +898,31 @@ public class OrthExtDistance{
         int m1 = OE1.getFixedLengths().length;
         int m2 = OE2.getFixedLengths().length;
         
-        int ol1 = 0; //Variable where the number of original leaves for the first Extension is saved in the unrestricted case.
-        int ol2 = 0; //number of original leaves for the second Extension
+        int[] IVI1 = new int[OE1.getBackMap().length];//Help us to keep track of the indices of the actual variables.
+        int[] IVI2 = new int[OE2.getBackMap().length];
         
-        if (restricted == false){
-            ol1 = OE1.getOrgLeaves2compLeaves().length;
-            ol2 = OE2.getOrgLeaves2compLeaves().length;
+        int idCount1 = 0;
+        for (int i = 0; i < IVI1.length; i++){
+            if(OE1.getBackMap(i) != -1){
+                IVI1[i] = idCount1;
+                idCount1++;
+            } else {
+                IVI1[i] = -1;
+            }
         }
+        
+        int idCount2 = 0;
+        for (int i = 0; i < IVI2.length; i++){
+            if(OE2.getBackMap(i) != -1){
+                IVI2[i] = idCount2;
+                idCount2++;
+            } else {
+                IVI2[i] = -1;
+            }
+        }
+        
+        int ol1 = OE1.getOrgLeaves2compLeaves().length; //Variable where the number of original leaves for the first Extension is saved.
+        int ol2 = OE2.getOrgLeaves2compLeaves().length; //number of original leaves for the second Extension
         
         int n = OE1.getOrthantAxis().size(); //The number of interior edges in binary trees with the complete leaf set and should coincide for both extension spaces. TO DO: verify it does coincide?  
         
@@ -834,13 +975,16 @@ public class OrthExtDistance{
         double[] dDirectionxs1 = new double[S1.size()];
         double[] dDirectionxs2 = new double[S2.size()];
         
-        //System.out.println("ABOUT TO ENTER THE MAIN LOOP");
-        //System.out.println("");
+        /*System.out.println("ABOUT TO ENTER THE MAIN LOOP");
+        System.out.println("IVI1: " + Arrays.toString(IVI1));
+        System.out.println("IVI2: " + Arrays.toString(IVI2));
+        System.out.println("");
+        */
         
         while ((optimNotReached)){ // && (iterCount<2)
             iterCount++;
             
-            /**System.out.println(":::: ITERATION "+iterCount+"::::");
+            /*System.out.println(":::: ITERATION " + iterCount + "::::");
             System.out.println("   T1: \n" + treePrinter.toString(T1)+"\n \n");
             System.out.println("   T2: \n" + treePrinter.toString(T2)+"\n \n");
             System.out.println("   B1 = " + B1);
@@ -855,10 +999,30 @@ public class OrthExtDistance{
                 conjugate_initial_counter = 0;
             }
             //System.out.println("Iteration number " + iterCount);
-            double[] gradient1 = new double[n + ol1];
-            double[] gradient2 = new double[n + ol2];
-            
+            double[] gradient1 = new double[m1 + k1];//Changing to the number of non-zero columns
+            double[] gradient2 = new double[m2 + k2];
+   
             RatioSequence currentRSeq = tempGeode.getRS();//The derivaties will depend on the ratio sequence in the geodesic of the geodesic between current trees T1 and T2. 
+            
+            //System.out.println("The geodesic summary is: " + treePrinter.toString(tempGeode, OE1.getCompleteLeafSet()));
+            
+            /*System.out.println("   T1: \n" + treePrinter.toString(T1)+"\n \n");
+            System.out.println("   T2: \n" + treePrinter.toString(T2)+"\n \n");
+            
+            System.out.println("Reviewing which edge 'crosses'  the BG edge: ");
+            PhyloTreeEdge edgeTemp = T2.getEdge(3);
+            System.out.println(edgeTemp.toString());
+            System.out.println(edgeTemp.isCompatibleWith(T1.getSplits(), OE1.getCompleteLeafSet().size()));
+            System.out.println("!(disjointFrom(e) || this.contains(e) || e.contains(this))");
+            System.out.println("");
+            for (int i = 0; i<3; i++){
+                System.out.println(edgeTemp.crosses(T1.getEdge(i), OE1.getCompleteLeafSet().size()));
+                System.out.println(T1.getEdge(i).toString());
+                System.out.println(edgeTemp.disjointFrom(T1.getEdge(i)));
+                System.out.println(edgeTemp.contains(T1.getEdge(i)));
+                System.out.println(T1.getEdge(i).contains(edgeTemp));
+                System.out.println(" ");
+            }*/
             
             //And it also depends on which common edges they have
             Vector<PhyloTreeEdge> currentECEs = tempGeode.geteCommonEdges(); 
@@ -868,66 +1032,91 @@ public class OrthExtDistance{
             Iterator<Ratio> rsIter = currentRSeq.iterator();
             while(rsIter.hasNext()){
                 Ratio rat = (Ratio) rsIter.next();
+                //System.out.println(" One ratio in beginning: " + rat.toStringVerbose(OE1.getCompleteLeafSet()));
                 for (PhyloTreeEdge e : rat.getEEdges()){
                     //int eID = e.getOriginalID();  
                     int eID = T1.getEdges().indexOf(e);
                     if (rat.getELength() == 0){
-                        gradient1[eID + ol1] += rat.getFLength(); //We add ol1 since in the unrestricted case, all internal edges are pushed to the end, because the original leave edges are all first. 
+                        gradient1[IVI1[cur1Edges2Axis.get(eID) + ol1]] += rat.getFLength(); //We add ol1 since in the unrestricted case, all internal edges are pushed to the end, because the original leave edges are all first. 
                     } else {
-                        gradient1[eID + ol1] += e.getNorm()*(1 + (rat.getFLength()/rat.getELength()));
+                        gradient1[IVI1[cur1Edges2Axis.get(eID) + ol1]] += e.getNorm()*(1 + (rat.getFLength()/rat.getELength()));
                     }       
                 }
                 for (PhyloTreeEdge e : rat.getFEdges()){
                     int eID = T2.getEdges().indexOf(e);
                     if (rat.getFLength() == 0){
-                        gradient2[eID + ol2] += rat.getELength();
+                        gradient2[IVI2[cur2Edges2Axis.get(eID) + ol2]] += rat.getELength();
                     } else {
-                        gradient2[eID + ol2] += e.getNorm()*(1 + (rat.getELength()/rat.getFLength()));
+                        gradient2[IVI2[cur2Edges2Axis.get(eID) + ol2]] += e.getNorm()*(1 + (rat.getELength()/rat.getFLength()));
                     }   
                 }
             }
             
             //For each common edge, we compute the contribution to the derivatives in the gradient.
             
+            /*System.out.println("Here are the curent ECEs at beginning:");
+            for(PhyloTreeEdge e : currentECEs){
+                System.out.println("    " + treePrinter.toString(e, OE1.getCompleteLeafSet()));
+            }
+            
+            System.out.println("Here are the curent FCEs at beginning:");
+            for(PhyloTreeEdge e : currentFCEs){
+                System.out.println("    " +  treePrinter.toString(e, OE1.getCompleteLeafSet()));
+            }*/
+            
             for(PhyloTreeEdge e : currentECEs){
                 int eID = T1.getEdges().indexOf(e);
                 if (eID == -1){
                     continue;
                 }
-                EdgeAttribute T2EAtt = T2.getAttribOfSplit(e.asSplit());
-                if (T2EAtt == null){
-                    Bipartition eClone = e.getOriginalEdge().clone();
-                    eClone.complement(OE2.getCompleteLeafSet().size());
-                    T2EAtt = T2.getAttribOfSplit(eClone);
+                if (IVI1[cur1Edges2Axis.get(eID) + ol1] != -1){
+                    EdgeAttribute T2EAtt = T2.getAttribOfSplit(e.asSplit());
+                    if (T2EAtt == null){
+                        Bipartition eClone = e.getOriginalEdge().clone();
+                        eClone.complement(OE2.getCompleteLeafSet().size());
+                        T2EAtt = T2.getAttribOfSplit(eClone);
+                    }
+                    if (T2EAtt == null){ //If T2EAtt is still null, then the "common" edge is actually not present.
+                        gradient1[IVI1[cur1Edges2Axis.get(eID) + ol1]] += (e.getNorm());
+                    } else {
+                        gradient1[IVI1[cur1Edges2Axis.get(eID) + ol1]] += (e.getNorm() - T2EAtt.norm());
+                    }
                 }
                 
-                gradient1[eID + ol1] += (e.getNorm() - T2EAtt.norm());
             } 
             for(PhyloTreeEdge e : currentFCEs){
                 int eID = T2.getEdges().indexOf(e);
                 if (eID == -1){
                     continue;
                 }
-                EdgeAttribute T1EAtt = T1.getAttribOfSplit(e.asSplit());
-                if (T1EAtt == null){
-                    Bipartition eClone = e.getOriginalEdge().clone();
-                    eClone.complement(OE1.getCompleteLeafSet().size());
-                    T1EAtt = T1.getAttribOfSplit(eClone);
+                if (IVI2[cur2Edges2Axis.get(eID) + ol2] != -1){
+                    EdgeAttribute T1EAtt = T1.getAttribOfSplit(e.asSplit());
+                    if (T1EAtt == null){
+                        Bipartition eClone = e.getOriginalEdge().clone();
+                        eClone.complement(OE1.getCompleteLeafSet().size());
+                        T1EAtt = T1.getAttribOfSplit(eClone);
+                    }
+                    if (T1EAtt == null){//If T1EAtt is still null, then the "common" edge is actually not present.
+                        gradient2[IVI2[cur2Edges2Axis.get(eID) + ol2]] += (e.getNorm());
+                    } else {
+                        gradient2[IVI2[cur2Edges2Axis.get(eID) + ol2]] += (e.getNorm() - T1EAtt.norm());
+                    }
+                    
                 }
-                gradient2[eID + ol2] += (e.getNorm() - T1EAtt.norm());
             } 
             
             
-            //In the unrestricted case, lenghts of external edges to the original leaves are also potential variables, and are treated similarly to common edges. 
-            if (restricted){
-                for (int i = 0; i < ol1; i++){
-                    gradient1[i] += (T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0) - T2.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0));
-                }
-                for (int i = 0; i < ol2; i++){
-                    gradient2[i] += (T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0) - T1.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0));
-                }
+            //In the unrestricted case, lenghts of external edges to the original leaves are also potential variables, and are treated similarly to common edges.
+            for (int i = 0; i < ol1; i++){
+                gradient1[IVI1[i]] += (T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0) - T2.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0));
+            }
+            for (int i = 0; i < ol2; i++){
+                gradient2[IVI2[i]] += (T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0) - T1.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0));
             }
             
+            
+            //System.out.println("The gradient1: " + Arrays.toString(gradient1));
+            //System.out.println("The gradient2: " + Arrays.toString(gradient2));
             
             //Using the gradients for each "variable" (the values of the edges for each current tree) we compute the gradients of the free variables in the reduced gradient method. But first, we need to save the previous values if we are not in the first iteration of a re-initialization of the conjugate gradient method. 
             
@@ -944,24 +1133,25 @@ public class OrthExtDistance{
                 }
             }
             
-             boolean gradient_small = true; // as we compute the new gradient, we assess if the size is big enough to justify another loop or we have arrive to an stationary point. 
+            boolean gradient_small = true; // as we compute the new gradient, we assess if the size is big enough to justify another loop or we have arrive to an stationary point. 
             
             for (int i = 0; i < S1.size(); i++){
-                gradientxs1[i] = gradient1[S1.get(i)] - gradient1[B1.get(OE1.getBackMap(S1.get(i)))];
+                gradientxs1[i] = gradient1[IVI1[S1.get(i)]] - gradient1[IVI1[B1.get(OE1.getBackMap(S1.get(i)))]];
                 if((gradientxs1[i] < -0.00000001) || (gradientxs1[i] > 0.00000001)){
                     gradient_small = false;
                 }
             }
             
             for (int i = 0; i < S2.size(); i++){
-                gradientxs2[i] = gradient2[S2.get(i)] - gradient2[B2.get(OE2.getBackMap(S2.get(i)))];
+                gradientxs2[i] = gradient2[IVI2[S2.get(i)]] - gradient2[IVI2[B2.get(OE2.getBackMap(S2.get(i)))]];
                 if((gradientxs2[i] < -0.00000001) || (gradientxs2[i] > 0.00000001)){
                     gradient_small = false;
                 }
             }
 
             
-            
+            //System.out.println("The gradientxs1: " + Arrays.toString(gradientxs1));
+            //System.out.println("The gradientxs2: " + Arrays.toString(gradientxs2));
             
             //We use continue; in case we have arrived to an stationary point in the current face being considered.
             
@@ -974,13 +1164,13 @@ public class OrthExtDistance{
                 optimNotReached = false; //Assume at first that the current semi-stationary point is in fact the optimum. 
                 
                 for (int i = 0; i < N1.size(); i++){
-                    if ((gradient1[N1.get(i)] - gradient1[B1.get(OE1.getBackMap(N1.get(i)))]) < 0){
+                    if ((gradient1[IVI1[N1.get(i)]] - gradient1[IVI1[B1.get(OE1.getBackMap(N1.get(i)))]]) < 0){
                         promisingEN1.add(N1.get(i));
                     }
                 }
                 
                 for (int i = 0; i < N2.size(); i++){
-                    if ((gradient2[N2.get(i)] - gradient2[B2.get(OE2.getBackMap(N2.get(i)))]) < 0){
+                    if ((gradient2[IVI2[N2.get(i)]] - gradient2[IVI2[B2.get(OE2.getBackMap(N2.get(i)))]]) < 0){
                         promisingEN2.add(N2.get(i));
                     }
                 }
@@ -1030,19 +1220,24 @@ public class OrthExtDistance{
             
             //Computing the complete change vector
             
-            double[] dDirection1 = new double[n + ol1];
+            double[] dDirection1 = new double[m1 + k1];
             
             for (int i = 0; i < S1.size(); i++){
-                dDirection1[S1.get(i)] = dDirectionxs1[i];
-                dDirection1[B1.get(OE1.getBackMap(S1.get(i)))] += -dDirectionxs1[i];
+                dDirection1[IVI1[S1.get(i)]] = dDirectionxs1[i];
+                dDirection1[IVI1[B1.get(OE1.getBackMap(S1.get(i)))]] += -dDirectionxs1[i];
             }
             
-            double[] dDirection2 = new double[n + ol2];
+            double[] dDirection2 = new double[m2 + k2];
             
             for (int i = 0; i < S2.size(); i++){
-                dDirection2[S2.get(i)] = dDirectionxs2[i];
-                dDirection2[B2.get(OE2.getBackMap(S2.get(i)))] += -dDirectionxs2[i];
+                dDirection2[IVI2[S2.get(i)]] = dDirectionxs2[i];
+                dDirection2[IVI2[B2.get(OE2.getBackMap(S2.get(i)))]] += -dDirectionxs2[i];
             }
+            
+            //System.out.println("The dDirectionxs1: " + Arrays.toString(dDirectionxs1));
+            //System.out.println("The dDirectionxs2: " + Arrays.toString(dDirectionxs2));
+            //System.out.println("The dDirection1: " + Arrays.toString(dDirection1));
+            //System.out.println("The dDirection2: " + Arrays.toString(dDirection2));
             
             //Determining the closed set for tau, in order to mantain all edges with positive size. 
             double tau_max = 0;
@@ -1055,88 +1250,99 @@ public class OrthExtDistance{
             Vector<Integer> potentialN1 = new Vector<Integer>();
             Vector<Integer> potentialN2 = new Vector<Integer>();
             
-            //In the unrestricted case, we need to check the external edges in the original tree to find tau_max as well
-            if (!restricted){
-                for (int i = 0; i < ol1; i++){
-                    if (dDirection1[i] < 0){
-                        if(tauNeedsChange || (-T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[i] < tau_max)){
-                            tau_max = -T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[i];
-                            if (!N1.contains(i)){
-                                potentialN1.clear();
-                                potentialN1.add(i);
-                            } else {
-                                System.out.println("An element on N1 sneaked in (situation 1): "+ i);
-                            }
-                            tauNeedsChange = false;
-                        } else if(-T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[i] == tau_max){
-                            if (!N1.contains(i)){
-                                potentialN1.add(i);
-                            }else {
-                                System.out.println("An element on N1 sneaked in (situation 2): "+ i);
-                            } 
-                        }
-                    }
-                }
-                for (int i = 0; i < ol2; i++){
-                    if (dDirection2[i] < 0){
-                        if(tauNeedsChange || (-T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[i] < tau_max)){
-                            tau_max = -T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[i];
-                            if (!N2.contains(i)){
-                                potentialN2.clear();
-                                potentialN2.add(i);
-                            } else {
-                                System.out.println("An element on N2 sneaked in (situation 1): "+ i);
-                            }
-                            tauNeedsChange = false;
-                        } else if(-T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[i] == tau_max){
-                            if (!N2.contains(i)){
-                                potentialN2.add(i);
-                            }else {
-                                System.out.println("An element on N2 sneaked in (situation 2): "+ i);
-                            } 
-                        }
-                    }
-                }
-            }
-            
-            for (int i = 0; i < EdgesT1.size(); i++){
-                if (dDirection1[i + ol1] < 0){
-                    if(tauNeedsChange || (-EdgesT1.get(i).getNorm()/dDirection1[i + ol1] < tau_max)){
-                        tau_max = -EdgesT1.get(i).getNorm()/dDirection1[i + ol1];
-                        if (!N1.contains(i+ol1)){
+            //We need to check the external edges in the original tree to find tau_max as well
+           
+            for (int i = 0; i < ol1; i++){
+                if (dDirection1[IVI1[i]] < 0){
+                    //System.out.println("For ol1 " + i + "it found dDirection1 < 0");
+                    if(tauNeedsChange || (-T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[IVI1[i]] < tau_max)){
+                        tau_max = -T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[IVI1[i]];
+                        //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection1[IVI1[i]]);
+                        if (!N1.contains(i)){
                             potentialN1.clear();
-                            potentialN1.add(i+ol1);
+                            potentialN1.add(i);
                         } else {
-                            System.out.println("An element on N1 sneaked in (situation 1): "+ (i+ol1));
+                            System.out.println("An element on N1 sneaked in (situation 1): "+ i);
                         }
                         tauNeedsChange = false;
-                    } else if (-EdgesT1.get(i).getNorm()/dDirection1[i+ol1] == tau_max){
-                        if (!N1.contains(i+ol1)){
-                            potentialN1.add(i+ol1);
+                    } else if(-T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[IVI1[i]] == tau_max){
+                        if (!N1.contains(i)){
+                            potentialN1.add(i);
                         }else {
-                            System.out.println("An element on N1 sneaked in (situation 2): "+ (i+ol1));
-                        }  
+                            System.out.println("An element on N1 sneaked in (situation 2): "+ i);
+                        } 
+                    }
+                }
+            }
+            for (int i = 0; i < ol2; i++){
+                if (dDirection2[IVI2[i]] < 0){
+                    //System.out.println("For ol2 " + i + "it found dDirection2 < 0");
+                    if(tauNeedsChange || (-T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[IVI2[i]] < tau_max)){
+                        tau_max = -T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[IVI2[i]];
+                         //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection2[IVI2[i]]);
+                        if (!N2.contains(i)){
+                            potentialN2.clear();
+                            potentialN2.add(i);
+                        } else {
+                            System.out.println("An element on N2 sneaked in (situation 1): "+ i);
+                        }
+                        tauNeedsChange = false;
+                    } else if(-T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[IVI2[i]] == tau_max){
+                        if (!N2.contains(i)){
+                            potentialN2.add(i);
+                        }else {
+                            System.out.println("An element on N2 sneaked in (situation 2): "+ i);
+                        } 
                     }
                 }
             }
             
-            for (int i = 0; i < EdgesT2.size(); i++){
-                if (dDirection2[i + ol2] < 0){
-                    if (tauNeedsChange || (-EdgesT2.get(i).getNorm()/dDirection2[i + ol2] < tau_max)){
-                        tau_max = -EdgesT2.get(i).getNorm()/dDirection2[i + ol2];
-                        if (!N2.contains(i + ol2)){
-                            potentialN1.clear();
-                            potentialN2.clear();
-                            potentialN2.add(i + ol2);
-                        } else{
-                            System.out.println("An element on N2 sneaked in (situation 1): "+ (i + ol2));
+            for (int i = 0; i < cur1Edges2Axis.size(); i++){
+                if(IVI1[cur1Edges2Axis.get(i) + ol1] != -1){
+                    if (dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]] < 0){
+                        //System.out.println("For cur1Edges2Axis " + i + "it found dDirection1 < 0");
+                        if(tauNeedsChange || (-EdgesT1.get(i).getNorm()/dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]] < tau_max)){
+                            tau_max = -EdgesT1.get(i).getNorm()/dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]];
+                            //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]]);
+                            if (!N1.contains(cur1Edges2Axis.get(i)+ol1)){
+                                potentialN1.clear();
+                                potentialN1.add(cur1Edges2Axis.get(i)+ol1);
+                            } else {
+                                System.out.println("An element on N1 sneaked in (situation 1): "+ (cur1Edges2Axis.get(i)+ol1));
+                            }
+                            tauNeedsChange = false;
+                        } else if (-EdgesT1.get(i).getNorm()/dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]] == tau_max){
+                            if (!N1.contains(cur1Edges2Axis.get(i)+ol1)){
+                                potentialN1.add(cur1Edges2Axis.get(i)+ol1);
+                            }else {
+                                System.out.println("An element on N1 sneaked in (situation 2): "+ (cur1Edges2Axis.get(i)+ol1));
+                            }  
                         }
-                        tauNeedsChange = false;
-                    } else if (-EdgesT2.get(i).getNorm()/dDirection2[i] == tau_max){
-                        if (!N2.contains(i + ol2)){
-                            potentialN2.add(i + ol2);
-                        } else{
-                            System.out.println("An element on N2 sneaked in (situation 2): "+ (i + ol2));
+                    }
+                }
+            }
+            
+            for (int i = 0; i < cur2Edges2Axis.size(); i++){
+                if(IVI2[cur2Edges2Axis.get(i) + ol2] != -1){
+                    if (dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]] < 0){
+                        //System.out.println("For cur2Edges2Axis " + i + "it found dDirection2 < 0");
+                        if (tauNeedsChange || (-EdgesT2.get(i).getNorm()/dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]] < tau_max)){
+                            tau_max = -EdgesT2.get(i).getNorm()/dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]];
+                            //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]]);
+                            if (!N2.contains(cur2Edges2Axis.get(i) + ol2)){
+                                potentialN1.clear();
+                                potentialN2.clear();
+                                potentialN2.add(cur2Edges2Axis.get(i) + ol2);
+                            } else{
+                                System.out.println("An element on N2 sneaked in (situation 1): "+ (cur2Edges2Axis.get(i) + ol2));
+                            }
+                            tauNeedsChange = false;
+                        } else if (-EdgesT2.get(i).getNorm()/dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]] == tau_max){
+                            if (!N2.contains(cur2Edges2Axis.get(i) + ol2)){
+                                potentialN2.add(cur2Edges2Axis.get(i) + ol2);
+                            } else{
+                                System.out.println("An element on N2 sneaked in (situation 2): "+ (cur2Edges2Axis.get(i) + ol2));
+                            }
                         }
                     }
                 }
@@ -1145,22 +1351,34 @@ public class OrthExtDistance{
             // We will look for the tau that minimizes f(x + tau* dDirection) between tau_min and tau_max.
             //We will first check if the minimum is the actual tau_max
             
+            //System.out.println("The tau_max is: " + tau_max);
+            
             //Defining new values of the trees to compute geodesic and find the derivative; 
             Vector<PhyloTreeEdge> conjEdgesT1 = Tools.myVectorClonePhyloTreeEdge(EdgesT1);
             Vector<PhyloTreeEdge> conjEdgesT2 = Tools.myVectorClonePhyloTreeEdge(EdgesT2);
             
             
             //Computing the new values of the interior edges of the trees by moving in the direction of change
-            for (int i = 0; i < EdgesT1.size(); i++){
-                double[] tempVecEA = {EdgesT1.get(i).getNorm() + (tau_max-0.0000000000001)*dDirection1[i+ol1]};
-                EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                conjEdgesT1.get(i).setAttribute(tempEA);
+            for (int i = 0; i < cur1Edges2Axis.size(); i++){
+                if(IVI1[cur1Edges2Axis.get(i)+ol1] != -1){
+                    double[] tempVecEA = {EdgesT1.get(i).getNorm() + (tau_max-0.0000000000001)*dDirection1[IVI1[cur1Edges2Axis.get(i)+ol1]]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    conjEdgesT1.get(i).setAttribute(tempEA);
+                    if(ET1toET2.containsKey(Integer.valueOf(i))){
+                        conjEdgesT2.get(ET1toET2.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                    }
+                }
             }
             
-            for (int i = 0; i < EdgesT2.size(); i++){
-                double[] tempVecEA = {EdgesT2.get(i).getNorm() + (tau_max-0.0000000000001)*dDirection2[i+ol2]};
-                EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                conjEdgesT2.get(i).setAttribute(tempEA);
+            for (int i = 0; i < cur2Edges2Axis.size(); i++){
+                if(IVI2[cur2Edges2Axis.get(i)+ol2] != -1){
+                    double[] tempVecEA = {EdgesT2.get(i).getNorm() + (tau_max-0.0000000000001)*dDirection2[IVI2[cur2Edges2Axis.get(i)+ol2]]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    conjEdgesT2.get(i).setAttribute(tempEA);
+                    if(ET2toET1.containsKey(Integer.valueOf(i))){
+                        conjEdgesT1.get(ET2toET1.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                    }
+                }
             }
             
             //We also need to change the values in the Leaf Edge attribs in the unrestricted case. 
@@ -1168,16 +1386,21 @@ public class OrthExtDistance{
             EdgeAttribute[] T1LeafEdgeAtt = T1.getCopyLeafEdgeAttribs();
             EdgeAttribute[] T2LeafEdgeAtt = T2.getCopyLeafEdgeAttribs();
             
-            if (!restricted){
-                for (int i = 0; i < ol1; i++){
-                    double[] tempVecEA = {T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) + (tau_max-0.0000000000001)*dDirection1[i]};
-                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                    T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+            
+            for (int i = 0; i < ol1; i++){
+                double[] tempVecEA = {T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) + (tau_max-0.0000000000001)*dDirection1[IVI1[i]]};
+                EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                if(OE2.getCompLeaves2orgLeaves(OE1.getOrgLeaves2compLeaves(i)) == -1){
+                    T2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                 }
-                for (int i = 0; i < ol2; i++){
-                    double[] tempVecEA = {T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) + (tau_max-0.0000000000001)*dDirection2[i]};
-                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                    T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+            }
+            for (int i = 0; i < ol2; i++){
+                double[] tempVecEA = {T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) + (tau_max-0.0000000000001)*dDirection2[IVI2[i]]};
+                EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                if(OE1.getCompLeaves2orgLeaves(OE2.getOrgLeaves2compLeaves(i)) == -1){
+                    T1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                 }
             }
             
@@ -1186,6 +1409,11 @@ public class OrthExtDistance{
             
             //Computing geodesic in between these trees. 
             Geodesic conjGeode = getGeodesic(conjT1, conjT2, null);
+            
+            /*System.out.println("   conjT1: \n" + treePrinter.toString(conjT1)+"\n \n");
+            System.out.println("   conjT2: \n" + treePrinter.toString(conjT2)+"\n \n");
+            System.out.println("The geodesic summary is: " + treePrinter.toString(conjGeode, OE1.getCompleteLeafSet()));
+            */
             
             RatioSequence conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
@@ -1204,7 +1432,7 @@ public class OrthExtDistance{
                     double ENum = 0;
                     for (PhyloTreeEdge e : rat.getEEdges()){
                         int eID = conjT1.getEdges().indexOf(e);
-                        ENum += dDirection1[eID + ol1]*e.getNorm();
+                        ENum += dDirection1[IVI1[cur1Edges2Axis.get(eID) + ol1]]*e.getNorm();
                     }
                     derivTau += ENum*(1 + (rat.getFLength()/rat.getELength()));
                 }
@@ -1213,7 +1441,7 @@ public class OrthExtDistance{
                     double FNum = 0;
                     for (PhyloTreeEdge e : rat.getFEdges()){
                         int eID = conjT2.getEdges().indexOf(e);
-                        FNum += dDirection2[eID + ol2]*e.getNorm();
+                        FNum += dDirection2[IVI2[cur2Edges2Axis.get(eID) + ol2]]*e.getNorm();
                     }
                     derivTau += FNum*(1 + (rat.getELength()/rat.getFLength()));
                 }
@@ -1227,33 +1455,35 @@ public class OrthExtDistance{
                 int eID1 = edgeIDonT(e, conjT1, n+3); 
                 int eID2 = edgeIDonT(e, conjT2, n+3); 
                 
-                if (eID1 == -1){
-                    System.out.println("Warning 1.1: " + e);
-                }
-                if (eID2 == -1){
-                    System.out.println("Warning 1.2: " + e);
-                }
+                if ((eID1 == -1) && (eID2 != -1)){
+                    //System.out.println("Warning 1.1: " + treePrinter.toString(e, OE1.getCompleteLeafSet()));
+                    derivTau += dDirection2[IVI2[cur2Edges2Axis.get(eID2) + ol2]]*(conjT2.getEdge(eID2).getAttribute().get(0)); 
+                }else if ((eID1 != -1) && (eID2 == -1)){
+                    //System.out.println("Warning 1.2: " + treePrinter.toString(e, OE2.getCompleteLeafSet()));
+                    derivTau += dDirection1[IVI1[cur1Edges2Axis.get(eID1) + ol1]]*(conjT1.getEdge(eID1).getAttribute().get(0)); 
+                } else if ((eID1 != -1) && (eID2 != -1)){
+                    if ((IVI1[cur1Edges2Axis.get(eID1) + ol1] != -1) && (IVI2[cur2Edges2Axis.get(eID2) + ol2] != -1)){
+                        derivTau += (dDirection1[IVI1[cur1Edges2Axis.get(eID1) + ol1]] - dDirection2[IVI2[cur2Edges2Axis.get(eID2) + ol2]])*(conjT1.getEdge(eID1).getAttribute().get(0) - conjT2.getEdge(eID2).getAttribute().get(0)); 
+                    }
+                }   
                 
-                derivTau += (dDirection1[eID1 + ol1] - dDirection2[eID2 + ol2])*(conjT1.getEdge(eID1).getAttribute().get(0) - conjT2.getEdge(eID2).getAttribute().get(0)); //The edge attribute in this case is the value in Tree 1 minus the value in Tree 2. 
             } 
             
             //In the unrestricted case, we need to also consider the contribution of the external edge to the gradient. 
             
-            if (!restricted){
-                for (int i = 0; i < ol1; i++){
-                    derivTau += dDirection1[i]*(T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) - T2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0));
-                }
-                for (int i = 0; i < ol2; i++){
-                    derivTau += dDirection2[i]*(T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) - T1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0));
-                }
+            for (int i = 0; i < ol1; i++){
+                derivTau += dDirection1[IVI1[i]]*(T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) - T2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0));
             }
-            
+            for (int i = 0; i < ol2; i++){
+                derivTau += dDirection2[IVI2[i]]*(T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) - T1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0));
+            }
+
             double tau = 0;
             
-            System.out.println("   Tau derivative for tau_max ended being "+ derivTau);
+            //System.out.println("   Tau derivative for tau_max ended being "+ derivTau);
             
             if (derivTau <= 0){//In this case the minimum is reached right at the tau_max limit and the search is over.
-                System.out.println("   So it hitted a face");
+                //System.out.println("   So it hitted a face");
                 tau = tau_max;
                 boolean ChangeInIndexMade = false;
                 
@@ -1361,10 +1591,11 @@ public class OrthExtDistance{
                 
                 System.out.println("    And the directions are " + Arrays.toString(dDirection1) + " and " + Arrays.toString(dDirection2));*/
                 
+                
                 Vector<PhyloTreeEdge> newEdgesT1 = Tools.myVectorClonePhyloTreeEdge(EdgesT1);
                 Vector<PhyloTreeEdge> newEdgesT2 = Tools.myVectorClonePhyloTreeEdge(EdgesT2);
-                double[] newEdgesValuesT1 = new double[n];
-                double[] newEdgesValuesT2 = new double[n];
+                double[] newEdgesValuesT1 = new double[EdgesT1.size()];
+                double[] newEdgesValuesT2 = new double[EdgesT2.size()];
                 double[] newLeafEdgesvaluesT1 = new double[ol1];
                 double[] newLeafEdgesvaluesT2 = new double[ol2];
                 
@@ -1372,23 +1603,23 @@ public class OrthExtDistance{
                     if (B1.get(i) < ol1){
                         newLeafEdgesvaluesT1[B1.get(i)] = OE1.getFixedLengths(i);
                     } else {
-                        newEdgesValuesT1[B1.get(i) - ol1] = OE1.getFixedLengths(i);
+                        newEdgesValuesT1[cur1Axis2Edges[B1.get(i) - ol1]] = OE1.getFixedLengths(i);
                     }
                 }
                 for (int i = 0; i < S1.size(); i++){
                     if (S1.get(i) < ol1){
-                        newLeafEdgesvaluesT1[S1.get(i)] = T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(S1.get(i))].get(0) + tau*dDirection1[S1.get(i)];
+                        newLeafEdgesvaluesT1[S1.get(i)] = T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(S1.get(i))].get(0) + tau*dDirection1[IVI1[S1.get(i)]];
                         if (B1.get(OE1.getBackMap(S1.get(i))) < ol1){
                             newLeafEdgesvaluesT1[B1.get(OE1.getBackMap(S1.get(i)))] -= newLeafEdgesvaluesT1[S1.get(i)];
                         } else {
-                            newEdgesValuesT1[B1.get(OE1.getBackMap(S1.get(i))) - ol1] -= newLeafEdgesvaluesT1[S1.get(i)];
+                            newEdgesValuesT1[cur1Axis2Edges[B1.get(OE1.getBackMap(S1.get(i))) - ol1]] -= newLeafEdgesvaluesT1[S1.get(i)];
                         }
                     } else {
-                        newEdgesValuesT1[S1.get(i) - ol1] = EdgesT1.get(S1.get(i)-ol1).getNorm() + tau*dDirection1[S1.get(i)];
+                        newEdgesValuesT1[cur1Axis2Edges[S1.get(i) - ol1]] = EdgesT1.get(cur1Axis2Edges[S1.get(i)-ol1]).getNorm() + tau*dDirection1[IVI1[S1.get(i)]];
                         if (B1.get(OE1.getBackMap(S1.get(i))) < ol1){
-                            newLeafEdgesvaluesT1[B1.get(OE1.getBackMap(S1.get(i)))] -= newEdgesValuesT1[S1.get(i) - ol1];
+                            newLeafEdgesvaluesT1[B1.get(OE1.getBackMap(S1.get(i)))] -= newEdgesValuesT1[cur1Axis2Edges[S1.get(i) - ol1]];
                         } else {
-                            newEdgesValuesT1[B1.get(OE1.getBackMap(S1.get(i))) - ol1] -= newEdgesValuesT1[S1.get(i) - ol1];
+                            newEdgesValuesT1[cur1Axis2Edges[B1.get(OE1.getBackMap(S1.get(i))) - ol1]] -= newEdgesValuesT1[cur1Axis2Edges[S1.get(i) - ol1]];
                         }
                     }
                 }
@@ -1397,57 +1628,70 @@ public class OrthExtDistance{
                     if (B2.get(i) < ol2){
                         newLeafEdgesvaluesT2[B2.get(i)] = OE2.getFixedLengths(i);
                     } else {
-                        newEdgesValuesT2[B2.get(i) - ol2] = OE2.getFixedLengths(i);
+                        newEdgesValuesT2[cur2Axis2Edges[B2.get(i) - ol2]] = OE2.getFixedLengths(i);
                     }
                 }
                 for (int i = 0; i < S2.size(); i++){
                     if (S2.get(i) < ol2){
-                        newLeafEdgesvaluesT2[S2.get(i)] = T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(S2.get(i))].get(0) + tau*dDirection2[S2.get(i)];
+                        newLeafEdgesvaluesT2[S2.get(i)] = T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(S2.get(i))].get(0) + tau*dDirection2[IVI2[S2.get(i)]];
                         if (B2.get(OE2.getBackMap(S2.get(i))) < ol2){
                             newLeafEdgesvaluesT2[B2.get(OE2.getBackMap(S2.get(i)))] -= newLeafEdgesvaluesT2[S2.get(i)];
                         } else {
-                            newEdgesValuesT2[B2.get(OE2.getBackMap(S2.get(i))) - ol2] -= newLeafEdgesvaluesT2[S2.get(i)];
+                            newEdgesValuesT2[cur2Axis2Edges[B2.get(OE2.getBackMap(S2.get(i))) - ol2]] -= newLeafEdgesvaluesT2[S2.get(i)];
                         }
                     } else {
-                        newEdgesValuesT2[S2.get(i) - ol2] = EdgesT2.get(S2.get(i)-ol2).getNorm() + tau*dDirection2[S2.get(i)];
+                        newEdgesValuesT2[cur2Axis2Edges[S2.get(i) - ol2]] = EdgesT2.get(cur2Axis2Edges[S2.get(i)-ol2]).getNorm() + tau*dDirection2[IVI2[S2.get(i)]];
                         if (B2.get(OE2.getBackMap(S2.get(i))) < ol2){
-                            newLeafEdgesvaluesT2[B2.get(OE2.getBackMap(S2.get(i)))] -= newEdgesValuesT2[S2.get(i) - ol2];
+                            newLeafEdgesvaluesT2[B2.get(OE2.getBackMap(S2.get(i)))] -= newEdgesValuesT2[cur2Axis2Edges[S2.get(i) - ol2]];
                         } else {
-                            newEdgesValuesT2[B2.get(OE2.getBackMap(S2.get(i))) - ol2] -= newEdgesValuesT2[S2.get(i) - ol2];
+                            newEdgesValuesT2[cur2Axis2Edges[B2.get(OE2.getBackMap(S2.get(i))) - ol2]] -= newEdgesValuesT2[cur2Axis2Edges[S2.get(i) - ol2]];
                         }
                     }
                 }
-                
-                
             
                 //Computing the new values of the interior edges of the trees 
-                for (int i = 0; i < newEdgesT1.size(); i++){
-                    double[] tempVecEA = {newEdgesValuesT1[i]};
-                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                    newEdgesT1.get(i).setAttribute(tempEA);
+                for (int i = 0; i < cur1Edges2Axis.size(); i++){
+                    if(IVI1[cur1Edges2Axis.get(i) + ol1] != -1){
+                        double[] tempVecEA = {newEdgesValuesT1[i]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        newEdgesT1.get(i).setAttribute(tempEA);
+                        if(ET1toET2.containsKey(Integer.valueOf(i))){
+                            newEdgesT2.get(ET1toET2.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                        }
+                    }
                 }
             
-                for (int i = 0; i < newEdgesT2.size(); i++){
-                    double[] tempVecEA = {newEdgesValuesT2[i]};
-                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                    newEdgesT2.get(i).setAttribute(tempEA);
+                for (int i = 0; i < cur2Edges2Axis.size(); i++){
+                    if(IVI2[cur2Edges2Axis.get(i) + ol2] != -1){
+                        double[] tempVecEA = {newEdgesValuesT2[i]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        newEdgesT2.get(i).setAttribute(tempEA);
+                        if(ET2toET1.containsKey(Integer.valueOf(i))){
+                            newEdgesT1.get(ET2toET1.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                        }
+                    }
                 }
                 
                 //We also need to change the values in the Leaf Edge attribs in the unrestricted case. 
-            
+                
+                
                 EdgeAttribute[] newT1LeafEdgeAtt = T1.getCopyLeafEdgeAttribs();
                 EdgeAttribute[] newT2LeafEdgeAtt = T2.getCopyLeafEdgeAttribs();
             
-                if (!restricted){
-                    for (int i = 0; i < ol1; i++){
-                        double[] tempVecEA = {newLeafEdgesvaluesT1[i]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        newT1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                for (int i = 0; i < ol1; i++){
+                    double[] tempVecEA = {newLeafEdgesvaluesT1[i]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    newT1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                    if(OE2.getCompLeaves2orgLeaves(OE1.getOrgLeaves2compLeaves(i)) == -1){
+                        newT2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                     }
-                    for (int i = 0; i < ol2; i++){
-                        double[] tempVecEA = {newLeafEdgesvaluesT2[i]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        newT2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                }
+                for (int i = 0; i < ol2; i++){
+                    double[] tempVecEA = {newLeafEdgesvaluesT2[i]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    newT2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                    if(OE1.getCompLeaves2orgLeaves(OE2.getOrgLeaves2compLeaves(i)) == -1){
+                        newT1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                     }
                 }
             
@@ -1465,42 +1709,37 @@ public class OrthExtDistance{
                     tau = tau_max/2;
                 }
                 //System.out.println("    Prev tau = " + tau);
-                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001))){ //&&(counterWhile < 50)
+                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001)) && (((tau_max - tau_min) > 0.00000000000001))){ //&&(counterWhile < 50)
                     counterWhile++;
-                    //System.out.println("   Inside the tau while loop "+counterWhile);
+                    //System.out.println("   INSIDE the tau while loop " + counterWhile);
                     tau = (tau_max + tau_min)/2;
+                    //System.out.println("   with Taus: [" + tau_min + " < " + tau + " < " + tau_max + "]");
+                    
                     conjEdgesT1 = Tools.myVectorClonePhyloTreeEdge(EdgesT1);
                     conjEdgesT2 = Tools.myVectorClonePhyloTreeEdge(EdgesT2);
                     
                     //Computing the new values of the interior edges of the trees by moving in the direction of change
-                    for (int i = 0; i < EdgesT1.size(); i++){
-                        double[] tempVecEA = {EdgesT1.get(i).getNorm() + tau*dDirection1[i]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        conjEdgesT1.get(i).setAttribute(tempEA);
+                    for (int i = 0; i < cur1Edges2Axis.size(); i++){
+                        if(IVI1[cur1Edges2Axis.get(i) + ol1] != -1){
+                            double[] tempVecEA = {EdgesT1.get(i).getNorm() + tau*dDirection1[IVI1[cur1Edges2Axis.get(i)+ol1]]};
+                            EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                            conjEdgesT1.get(i).setAttribute(tempEA);
+                            if(ET1toET2.containsKey(Integer.valueOf(i))){
+                                conjEdgesT2.get(ET1toET2.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                            }
+                        }
+                            
                     }
             
-                    for (int i = 0; i < EdgesT2.size(); i++){
-                        double[] tempVecEA = {EdgesT2.get(i).getNorm() + tau*dDirection2[i]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        conjEdgesT2.get(i).setAttribute(tempEA);
-                    }
-                    //////////////////////
-                    
-                    conjEdgesT1 = Tools.myVectorClonePhyloTreeEdge(EdgesT1);
-                    conjEdgesT2 = Tools.myVectorClonePhyloTreeEdge(EdgesT2);
-            
-            
-                    //Computing the new values of the interior edges of the trees by moving in the direction of change
-                    for (int i = 0; i < EdgesT1.size(); i++){
-                        double[] tempVecEA = {EdgesT1.get(i).getNorm() + (tau)*dDirection1[i+ol1]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        conjEdgesT1.get(i).setAttribute(tempEA);
-                    }
-            
-                    for (int i = 0; i < EdgesT2.size(); i++){
-                        double[] tempVecEA = {EdgesT2.get(i).getNorm() + (tau)*dDirection2[i+ol2]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        conjEdgesT2.get(i).setAttribute(tempEA);
+                    for (int i = 0; i < cur2Edges2Axis.size(); i++){
+                        if(IVI2[cur2Edges2Axis.get(i) + ol2] != -1){
+                            double[] tempVecEA = {EdgesT2.get(i).getNorm() + tau*dDirection2[IVI2[cur2Edges2Axis.get(i)+ol2]]};
+                            EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                            conjEdgesT2.get(i).setAttribute(tempEA);
+                            if(ET2toET1.containsKey(Integer.valueOf(i))){
+                                conjEdgesT1.get(ET2toET1.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                            }
+                        }
                     }
             
                     //We also need to change the values in the Leaf Edge attribs in the unrestricted case. 
@@ -1508,22 +1747,37 @@ public class OrthExtDistance{
                     T1LeafEdgeAtt = T1.getCopyLeafEdgeAttribs();
                     T2LeafEdgeAtt = T2.getCopyLeafEdgeAttribs();
             
-                    if (!restricted){
-                        for (int i = 0; i < ol1; i++){
-                            double[] tempVecEA = {T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) + tau*dDirection1[i]};
-                            EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                            T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
-                        }
-                        for (int i = 0; i < ol2; i++){
-                            double[] tempVecEA = {T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) + tau*dDirection2[i]};
-                            EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                            T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                    for (int i = 0; i < ol1; i++){
+                        double[] tempVecEA = {T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) + tau*dDirection1[IVI1[i]]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                        if(OE2.getCompLeaves2orgLeaves(OE1.getOrgLeaves2compLeaves(i)) == -1){
+                            T2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                         }
                     }
-            
+                    
+                    for (int i = 0; i < ol2; i++){
+                        double[] tempVecEA = {T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) + tau*dDirection2[IVI2[i]]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                        if(OE1.getCompLeaves2orgLeaves(OE2.getOrgLeaves2compLeaves(i)) == -1){
+                            T1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                        }
+                    }
                     
                     conjT1 = new PhyloTree(conjEdgesT1, T1.getLeaf2NumMap(), T1LeafEdgeAtt, false);
                     conjT2 = new PhyloTree(conjEdgesT2, T2.getLeaf2NumMap(), T2LeafEdgeAtt, false);
+                    
+                    /*System.out.println("   With tau =" + tau);
+                    System.out.println("    The original trees are: ");
+                    System.out.println("      T1: \n" + treePrinter.toString(T1)+"\n");
+                    System.out.println("      T2: \n" + treePrinter.toString(T2)+"\n");
+                    System.out.println("    The direction of change is: ");
+                    System.out.println("      Dd1: \n" + Arrays.toString(dDirection1)+"\n");
+                    System.out.println("      Dd2: \n" + Arrays.toString(dDirection2)+"\n");
+                    System.out.println("    So the 'new' trees are: ");
+                    System.out.println("      T1_new: \n" + treePrinter.toString(conjT1)+"\n");
+                    System.out.println("      T2_new: \n" + treePrinter.toString(conjT2)+"\n");*/
                     
                     //Computing geodesic in between these trees. 
                     conjGeode = getGeodesic(conjT1, conjT2, null);
@@ -1532,7 +1786,7 @@ public class OrthExtDistance{
             
                     //And on which common edges they have
                     conjCEs = conjGeode.getCommonEdges(); 
-            
+                    
                     derivTau = 0;//Where the final derivative for tau will be saved
                     
                     //For each ratio we compute the contribution of the expression relating to the ratio in derivative with respect to tau_max
@@ -1545,7 +1799,7 @@ public class OrthExtDistance{
                             double ENum = 0;
                             for (PhyloTreeEdge e : rat.getEEdges()){
                                 int eID = conjT1.getEdges().indexOf(e);
-                                ENum += dDirection1[eID + ol1]*e.getNorm();
+                                ENum += dDirection1[IVI1[cur1Edges2Axis.get(eID) + ol1]]*e.getNorm();
                             }
                             derivTau += ENum*(1 + (rat.getFLength()/rat.getELength()));
                         }
@@ -1554,32 +1808,40 @@ public class OrthExtDistance{
                             double FNum = 0;
                             for (PhyloTreeEdge e : rat.getFEdges()){
                                 int eID = conjT2.getEdges().indexOf(e);
-                                FNum += dDirection2[eID + ol2]*e.getNorm();
+                                FNum += dDirection2[IVI2[cur2Edges2Axis.get(eID) + ol2]]*e.getNorm();
                             }
                             derivTau += FNum*(1 + (rat.getELength()/rat.getFLength()));
                         }
                     }
-            
+                    
                     //For each common edge, we compute the contribution to the derivatives in the gradient. 
                     for(PhyloTreeEdge e : conjCEs){
                         int eID1 = edgeIDonT(e, conjT1, n+3);
                         int eID2 = edgeIDonT(e, conjT2, n+3);
                         
-            
-                        derivTau += (dDirection1[eID1 + ol1] - dDirection2[eID2 + ol2])*(conjT1.getEdge(eID1).getAttribute().get(0) - conjT2.getEdge(eID2).getAttribute().get(0)); //The edge attribute in this case is the value in Tree 1 minus the value in Tree 2. 
+                        if ((eID1 == -1) && (eID2 != -1)){
+                            //System.out.println("Warning 2.1: " + treePrinter.toString(e, OE1.getCompleteLeafSet()));
+                            derivTau += dDirection2[IVI2[cur2Edges2Axis.get(eID2) + ol2]]*(conjT2.getEdge(eID2).getAttribute().get(0)); 
+                        }else if ((eID1 != -1) && (eID2 == -1)){
+                            //System.out.println("Warning 2.2: " + treePrinter.toString(e, OE2.getCompleteLeafSet()));
+                            derivTau += dDirection1[IVI1[cur1Edges2Axis.get(eID1) + ol1]]*(conjT1.getEdge(eID1).getAttribute().get(0)); 
+                        } else if ((eID1 != -1) && (eID2 != -1)){
+                            if ((IVI1[cur1Edges2Axis.get(eID1) + ol1] != -1) && (IVI2[cur2Edges2Axis.get(eID2) + ol2] != -1)){
+                                derivTau += (dDirection1[IVI1[cur1Edges2Axis.get(eID1) + ol1]] - dDirection2[IVI2[cur2Edges2Axis.get(eID2) + ol2]])*(conjT1.getEdge(eID1).getAttribute().get(0) - conjT2.getEdge(eID2).getAttribute().get(0)); 
+                            }
+                        } 
                     }
                     
                     //In the unrestricted case, we need to also consider the contribution of the external edge to the gradient. 
-            
-                    if (!restricted){
-                        for (int i = 0; i < ol1; i++){
-                            derivTau += dDirection1[i]*(T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) - T2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0));
-                        }
-                        for (int i = 0; i < ol2; i++){
-                            derivTau += dDirection2[i]*(T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) - T1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0));
-                        }
+                    
+                    for (int i = 0; i < ol1; i++){
+                        derivTau += dDirection1[IVI1[i]]*(T1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0) - T2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].get(0));
+                    }
+                    for (int i = 0; i < ol2; i++){
+                        derivTau += dDirection2[IVI2[i]]*(T2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0) - T1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].get(0));
                     }
                     
+                    //System.out.println("        DerivTau = " + derivTau);
                     if (derivTau <= 0){// This would mean the minimum is between tau and tau_max
                         tau_min = tau;
                     } else {
@@ -1591,11 +1853,10 @@ public class OrthExtDistance{
                 
                 //Defining the new trees to go back to the main while loop: 
                 
-                
                 Vector<PhyloTreeEdge> newEdgesT1 = Tools.myVectorClonePhyloTreeEdge(EdgesT1);
                 Vector<PhyloTreeEdge> newEdgesT2 = Tools.myVectorClonePhyloTreeEdge(EdgesT2);
-                double[] newEdgesValuesT1 = new double[n];
-                double[] newEdgesValuesT2 = new double[n];
+                double[] newEdgesValuesT1 = new double[EdgesT1.size()];
+                double[] newEdgesValuesT2 = new double[EdgesT2.size()];
                 double[] newLeafEdgesvaluesT1 = new double[ol1];
                 double[] newLeafEdgesvaluesT2 = new double[ol2];
                 
@@ -1603,23 +1864,23 @@ public class OrthExtDistance{
                     if (B1.get(i) < ol1){
                         newLeafEdgesvaluesT1[B1.get(i)] = OE1.getFixedLengths(i);
                     } else {
-                        newEdgesValuesT1[B1.get(i) - ol1] = OE1.getFixedLengths(i);
+                        newEdgesValuesT1[cur1Axis2Edges[B1.get(i) - ol1]] = OE1.getFixedLengths(i);
                     }
                 }
                 for (int i = 0; i < S1.size(); i++){
                     if (S1.get(i) < ol1){
-                        newLeafEdgesvaluesT1[S1.get(i)] = T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(S1.get(i))].get(0) + tau*dDirection1[S1.get(i)];
+                        newLeafEdgesvaluesT1[S1.get(i)] = T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(S1.get(i))].get(0) + tau*dDirection1[IVI1[S1.get(i)]];
                         if (B1.get(OE1.getBackMap(S1.get(i))) < ol1){
                             newLeafEdgesvaluesT1[B1.get(OE1.getBackMap(S1.get(i)))] -= newLeafEdgesvaluesT1[S1.get(i)];
                         } else {
-                            newEdgesValuesT1[B1.get(OE1.getBackMap(S1.get(i))) - ol1] -= newLeafEdgesvaluesT1[S1.get(i)];
+                            newEdgesValuesT1[cur1Axis2Edges[B1.get(OE1.getBackMap(S1.get(i))) - ol1]] -= newLeafEdgesvaluesT1[S1.get(i)];
                         }
                     } else {
-                        newEdgesValuesT1[S1.get(i) - ol1] = EdgesT1.get(S1.get(i)-ol1).getNorm() + tau*dDirection1[S1.get(i)];
+                        newEdgesValuesT1[cur1Axis2Edges[S1.get(i) - ol1]] = EdgesT1.get(cur1Axis2Edges[S1.get(i)-ol1]).getNorm() + tau*dDirection1[IVI1[S1.get(i)]];
                         if (B1.get(OE1.getBackMap(S1.get(i))) < ol1){
-                            newLeafEdgesvaluesT1[B1.get(OE1.getBackMap(S1.get(i)))] -= newEdgesValuesT1[S1.get(i) - ol1];
+                            newLeafEdgesvaluesT1[B1.get(OE1.getBackMap(S1.get(i)))] -= newEdgesValuesT1[cur1Axis2Edges[S1.get(i) - ol1]];
                         } else {
-                            newEdgesValuesT1[B1.get(OE1.getBackMap(S1.get(i))) - ol1] -= newEdgesValuesT1[S1.get(i) - ol1];
+                            newEdgesValuesT1[cur1Axis2Edges[B1.get(OE1.getBackMap(S1.get(i))) - ol1]] -= newEdgesValuesT1[cur1Axis2Edges[S1.get(i) - ol1]];
                         }
                     }
                 }
@@ -1628,39 +1889,48 @@ public class OrthExtDistance{
                     if (B2.get(i) < ol2){
                         newLeafEdgesvaluesT2[B2.get(i)] = OE2.getFixedLengths(i);
                     } else {
-                        newEdgesValuesT2[B2.get(i) - ol2] = OE2.getFixedLengths(i);
+                        newEdgesValuesT2[cur2Axis2Edges[B2.get(i) - ol2]] = OE2.getFixedLengths(i);
                     }
                 }
                 for (int i = 0; i < S2.size(); i++){
                     if (S2.get(i) < ol2){
-                        newLeafEdgesvaluesT2[S2.get(i)] = T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(S2.get(i))].get(0) + tau*dDirection2[S2.get(i)];
+                        newLeafEdgesvaluesT2[S2.get(i)] = T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(S2.get(i))].get(0) + tau*dDirection2[IVI2[S2.get(i)]];
                         if (B2.get(OE2.getBackMap(S2.get(i))) < ol2){
                             newLeafEdgesvaluesT2[B2.get(OE2.getBackMap(S2.get(i)))] -= newLeafEdgesvaluesT2[S2.get(i)];
                         } else {
-                            newEdgesValuesT2[B2.get(OE2.getBackMap(S2.get(i))) - ol2] -= newLeafEdgesvaluesT2[S2.get(i)];
+                            newEdgesValuesT2[cur2Axis2Edges[B2.get(OE2.getBackMap(S2.get(i))) - ol2]] -= newLeafEdgesvaluesT2[S2.get(i)];
                         }
                     } else {
-                        newEdgesValuesT2[S2.get(i) - ol2] = EdgesT2.get(S2.get(i)-ol2).getNorm() + tau*dDirection2[S2.get(i)];
+                        newEdgesValuesT2[cur2Axis2Edges[S2.get(i) - ol2]] = EdgesT2.get(cur2Axis2Edges[S2.get(i)-ol2]).getNorm() + tau*dDirection2[IVI2[S2.get(i)]];
                         if (B2.get(OE2.getBackMap(S2.get(i))) < ol2){
-                            newLeafEdgesvaluesT2[B2.get(OE2.getBackMap(S2.get(i)))] -= newEdgesValuesT2[S2.get(i) - ol2];
+                            newLeafEdgesvaluesT2[B2.get(OE2.getBackMap(S2.get(i)))] -= newEdgesValuesT2[cur2Axis2Edges[S2.get(i) - ol2]];
                         } else {
-                            newEdgesValuesT2[B2.get(OE2.getBackMap(S2.get(i))) - ol2] -= newEdgesValuesT2[S2.get(i) - ol2];
+                            newEdgesValuesT2[cur2Axis2Edges[B2.get(OE2.getBackMap(S2.get(i))) - ol2]] -= newEdgesValuesT2[cur2Axis2Edges[S2.get(i) - ol2]];
                         }
                     }
                 }
                 
-            
                 //Computing the new values of the interior edges of the trees 
-                for (int i = 0; i < newEdgesT1.size(); i++){
-                    double[] tempVecEA = {newEdgesValuesT1[i]};
-                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                    newEdgesT1.get(i).setAttribute(tempEA);
+                for (int i = 0; i < cur1Edges2Axis.size(); i++){
+                    if(IVI1[cur1Edges2Axis.get(i) + ol1] != -1){
+                        double[] tempVecEA = {newEdgesValuesT1[i]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        newEdgesT1.get(i).setAttribute(tempEA);
+                        if(ET1toET2.containsKey(Integer.valueOf(i))){
+                            newEdgesT2.get(ET1toET2.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                        }
+                    }
                 }
             
-                for (int i = 0; i < newEdgesT2.size(); i++){
-                    double[] tempVecEA = {newEdgesValuesT2[i]};
-                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                    newEdgesT2.get(i).setAttribute(tempEA);
+                for (int i = 0; i < cur2Edges2Axis.size(); i++){
+                    if(IVI2[cur2Edges2Axis.get(i) + ol2] != -1){
+                        double[] tempVecEA = {newEdgesValuesT2[i]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        newEdgesT2.get(i).setAttribute(tempEA);
+                        if(ET2toET1.containsKey(Integer.valueOf(i))){
+                            newEdgesT1.get(ET2toET1.get(Integer.valueOf(i)).intValue()).setAttribute(tempEA);
+                        }
+                    }
                 }
                 
                 
@@ -1669,23 +1939,27 @@ public class OrthExtDistance{
                 EdgeAttribute[] newT1LeafEdgeAtt = T1.getCopyLeafEdgeAttribs();
                 EdgeAttribute[] newT2LeafEdgeAtt = T2.getCopyLeafEdgeAttribs();
             
-                if (!restricted){
-                    for (int i = 0; i < ol1; i++){
-                        double[] tempVecEA = {newLeafEdgesvaluesT1[i]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        newT1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                for (int i = 0; i < ol1; i++){
+                    double[] tempVecEA = {newLeafEdgesvaluesT1[i]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    newT1LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                    if(OE2.getCompLeaves2orgLeaves(OE1.getOrgLeaves2compLeaves(i)) == -1){
+                        newT2LeafEdgeAtt[OE1.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                     }
-                    for (int i = 0; i < ol2; i++){
-                        double[] tempVecEA = {newLeafEdgesvaluesT2[i]};
-                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
-                        newT2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                }
+                for (int i = 0; i < ol2; i++){
+                    double[] tempVecEA = {newLeafEdgesvaluesT2[i]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    newT2LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
+                    if(OE1.getCompLeaves2orgLeaves(OE2.getOrgLeaves2compLeaves(i)) == -1){
+                        newT1LeafEdgeAtt[OE2.getOrgLeaves2compLeaves(i)].setEdgeAttribute(tempEA);
                     }
                 }
             
             
                 T1 = new PhyloTree(newEdgesT1, T1.getLeaf2NumMap(), newT1LeafEdgeAtt, false);
                 T2 = new PhyloTree(newEdgesT2, T2.getLeaf2NumMap(), newT2LeafEdgeAtt, false);
-                
+            
                 tempGeode = getGeodesic(T1, T2, null);
                 
             }
@@ -1697,8 +1971,21 @@ public class OrthExtDistance{
         Tree2 = T2;
         FinalGeode = tempGeode;
         Distance = FinalGeode.getDist();
+        IterCount = iterCount;
+        
+        /*System.out.println("   Tree 1: \n" + treePrinter.toString(Tree1)+"\n \n");
+        System.out.println("   Tree 2: \n" + treePrinter.toString(Tree2)+"\n \n");
+        System.out.println(" With distance " + Distance);*/
         
     }// end of Constructor 2
+    
+    public OrthExtDistance(OrthExt OE1, OrthExt OE2, boolean restricted){
+        if (restricted){
+            Constructor1(OE1, OE2);
+        } else {
+            Constructor2(OE1, OE2);
+        }
+    }
     
     //Getters & Printers
     public PhyloTree getFirstTree(){
@@ -1717,6 +2004,10 @@ public class OrthExtDistance{
         return FinalGeode;
     }
     
+    public int getIterCount(){
+        return IterCount;
+    }
+    
     public void PrintSummary(){
         System.out.println("The distance between the orthant extension spaces is " + Distance);
                 PhyloNicePrinter treePrinter = new PhyloNicePrinter();
@@ -1725,7 +2016,8 @@ public class OrthExtDistance{
                 System.out.println("");
                 System.out.println("Best Tree 2: ");
                 System.out.println(treePrinter.toString(Tree2));
-            
+                System.out.println("");
+                System.out.println("Number of iterations for Computation: " + this.IterCount);
     }
 }
 

@@ -121,7 +121,7 @@ public class edgeCrossGraph{
                     rest = rest/2; 
                 }
                 //Adding the new edge created by adding those leaves to the Vertex list, with proper ID.
-                if (!tempPartition.get(0)){//We always use the split including the first leaf as the representative
+                if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
                     tempPartition.flip(0,cLeafSet.size());
                 }
                 
@@ -194,6 +194,7 @@ public class edgeCrossGraph{
         this.vertexNum = (int) (m*Math.pow(2,l));  
         if (!restricted){
             this.vertexNum += (int) (oLeafSet.size()*(Math.pow(2,l) - 1)); 
+            this.vertexNum += (int) Math.pow(2,l) - l - 1;
         }
         
         //Array of the leaves that are being added
@@ -211,7 +212,7 @@ public class edgeCrossGraph{
             
         }
         
-        //We iterate over the set of complete leaves to make find which leafs must be added to the original tree.
+        //We iterate over the set of complete leaves to find which leafs must be added to the original tree.
         int count = 0;
         for (int i = 0; i < cLeafSet.size(); i++){
             if (!originalLeaves.get(i)){
@@ -248,7 +249,7 @@ public class edgeCrossGraph{
                     rest = rest/2; 
                 }
                 //Adding the new edge created by adding those leaves to the Vertex list, with proper ID.
-                if (!tempPartition.get(0)){//We always use the split including the first leaf as the representative
+                if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
                     tempPartition.flip(0,cLeafSet.size());
                 }
                 PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
@@ -275,7 +276,33 @@ public class edgeCrossGraph{
                         rest = rest/2; 
                     }
                     //Adding the new edge created by adding those leaves to the Vertex list, with proper ID.
-                    if (!tempPartition.get(0)){//We always use the split including the first leaf as the representative
+                    if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
+                        tempPartition.flip(0,cLeafSet.size());
+                    }
+                    PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
+                    edgeVertex newV = new edgeVertex(VertexCount, newE);
+                    VertexList.add(newV);
+                    VertexCount++;
+                }
+            }
+            
+            BitSet moldEmptyPartition = new BitSet();
+            for (int pow2 = 1; pow2 < l; pow2++){//We are using the formula 2^pow2 + bitext to generate all bitc numbers that have at least 2 ones in the binary representation
+                //System.out.println("pow 2 = "+ pow2);
+                int vPow2 = (int) Math.pow(2,pow2);
+                //System.out.println("V pow 2 = "+ vPow2);
+                for (int bitext = 1; bitext < vPow2; bitext++){
+                    int rest = vPow2 + bitext;
+                    //System.out.println("Rest = "+ rest);
+                    BitSet tempPartition = (BitSet) moldEmptyPartition.clone();
+                    for (int j = 0; j < l; j++){
+                        if(rest % 2 != 0){
+                            tempPartition.set(listAddedLeaves[j]);
+                        }
+                        rest = rest/2; 
+                    }
+                    //Adding the new edge created by adding those leaves to the Vertex list, with proper ID.
+                    if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
                         tempPartition.flip(0,cLeafSet.size());
                     }
                     PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);

@@ -32,12 +32,23 @@ public class DemoExtensionSpaces{
             
             System.out.println("\n The second tree is: \n"+ nicePrint.toString(SecondTree));
             
-            System.out.println("\n \n Please input the complete leaf set, separated by commas without blank spaces:");
+            System.out.println("\n \n Press enter if you want to use the union of the leaf sets of both trees. \n If not, please input the complete leaf set, separated by commas without blank spaces:");
             String CLSstring = input.nextLine();
-            String[] temp = CLSstring.split(",");
-            completeLeafSet = new Vector<String>();
-            for(String s : temp){
-                completeLeafSet.add(s);
+            if (CLSstring.equals("") || CLSstring.equals(" ")){
+                completeLeafSet = new Vector<String>();
+                completeLeafSet.addAll(FirstTree.getLeaf2NumMap());
+                for (String s : SecondTree.getLeaf2NumMap()){
+                    if (!completeLeafSet.contains(s)){
+                        completeLeafSet.add(s);
+                    }
+                }
+                Collections.sort(completeLeafSet);
+            } else {
+                String[] temp = CLSstring.split(",");
+                completeLeafSet = new Vector<String>();
+                for(String s : temp){
+                    completeLeafSet.add(s);
+                }
             }
             System.out.println("\n The complete leaf set is: "+ completeLeafSet);
         } else if (args.length == 1){
@@ -45,6 +56,7 @@ public class DemoExtensionSpaces{
                 File myFile = new File(args[0]);
                 Scanner myReader = new Scanner(myFile);
                 String StringFirstTree = myReader.nextLine();
+                System.out.println("\n The Newick format for the first tree is: \n"+ StringFirstTree);
                 
                 FirstTree = new PhyloTree(StringFirstTree,false);
                 System.out.println("\n The first tree is: \n"+ nicePrint.toString(FirstTree));
@@ -66,7 +78,45 @@ public class DemoExtensionSpaces{
                 e.printStackTrace();
             }
         } else if(args.length == 2){
-            System.out.println("We are in the case where things were already inputed manually, only trees");
+            try {
+                System.out.println("It entered the correct if");
+                File myFile1 = new File(args[0]);
+                Scanner myReader1 = new Scanner(myFile1);
+                String StringFirstTree = myReader1.nextLine();
+                
+                System.out.println("About to create first tree");
+                
+                FirstTree = new PhyloTree(StringFirstTree,false);
+                System.out.println("\n The first tree is: \n"+ nicePrint.toString(FirstTree));
+                myReader1.close();
+                
+                File myFile2 = new File(args[1]);
+                Scanner myReader2 = new Scanner(myFile2);
+                String StringSecondTree = myReader2.nextLine();
+                
+                System.out.println("About to create second tree with: " + StringSecondTree);
+                
+                SecondTree = new PhyloTree(StringSecondTree,false);
+                System.out.println("\n The second tree is: \n"+ nicePrint.toString(SecondTree));
+                myReader2.close();
+              
+            } catch (FileNotFoundException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
+            }
+            
+            completeLeafSet = new Vector<String>();
+            completeLeafSet.addAll(FirstTree.getLeaf2NumMap());
+            for (String s : SecondTree.getLeaf2NumMap()){
+                if (!completeLeafSet.contains(s)){
+                    completeLeafSet.add(s);
+                }
+            }
+            Collections.sort(completeLeafSet);
+            System.out.println("\n The complete leaf set is: "+ completeLeafSet);
+            System.out.println("Continue? Press enter");
+            String NonImportant = input.nextLine();
+    
         } else if (args.length == 3){
             System.out.println("We are in the case where things were already inputed manually");
         } else {

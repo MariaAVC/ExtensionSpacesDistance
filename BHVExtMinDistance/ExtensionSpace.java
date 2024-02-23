@@ -150,6 +150,24 @@ public class ExtensionSpace{
         }
     }
     
+    public void PrintSummaryLN(){
+        PhyloNicePrinter treePrint = new PhyloNicePrinter();
+        System.out.println("EXTENSION SPACE FOR: ");
+        System.out.println(treePrint.toString(this.originalTree));
+        System.out.println("");
+        System.out.println("To complete Leaf Set: "+ this.completeLeafSet);
+        System.out.println("");
+        System.out.println("");
+        System.out.println("The extension space is composed by "+this.numOrthants+" orthant extensions:");
+        
+        System.out.println("");
+        for (int i = 0; i < numOrthants; i++){
+            System.out.println("Orthant number "+i+ " adjacent to: " + Arrays.toString(connectCluster.getAdjIDs(i)));
+            listOrthants.get(i).printLN();
+            System.out.println("");
+        }
+    }
+    
     public void PrintOrthants(){
         for (int i = 0; i < numOrthants; i++){
             System.out.println("Orthant number "+i+ " adjacent to: " + Arrays.toString(connectCluster.getAdjIDs(i)));
@@ -163,7 +181,15 @@ public class ExtensionSpace{
         return this.listOrthants;
     }
     
+    public OrthExt getOrthExts(int i){
+        return this.listOrthants.get(i);
+    }
+    
     public orthantGraph getConnectCluster(){
         return this.connectCluster;
+    }
+    
+    public int getNumOrthants(){
+        return this.numOrthants;
     }
 }
