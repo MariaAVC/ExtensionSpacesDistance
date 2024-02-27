@@ -10,7 +10,9 @@ package BHVExtMinDistance;
 
 import java.util.*;
 import distanceAlg1.*;
+import polyAlg.*;
 import static polyAlg.PolyMain.getGeodesic;
+
 
 public class ExtensionSpace{
     //The whole tree to which leaves are been added
@@ -32,10 +34,10 @@ public class ExtensionSpace{
     //constructors
     
     public ExtensionSpace(PhyloTree t, Vector<String> cLeafSet){
-        this.originalTree = t;
-        this.completeLeafSet = cLeafSet;
+        this.originalTree = new PhyloTree(t);
+        this.completeLeafSet = Tools.myVectorCloneString(cLeafSet);
         
-        originalLeaves = new BitSet(cLeafSet.size());
+        originalLeaves = new BitSet(this.completeLeafSet.size());
         Vector<String> oLeafSet = polyAlg.Tools.myVectorCloneString(t.getLeaf2NumMap());
         
         //REALIZED I DO NOT USE THIS HERE, AND CALCULATE AGAIN INSIDE edgeCrossGraph. COMMENT --> DELETE WHEN SURE ALL GOOD
@@ -66,17 +68,17 @@ public class ExtensionSpace{
         
         for (int i = 0; i < numOrthants; i++){
             Vector<Bipartition> tempAxes = connectCluster.getAxes(i);
-            OrthExt tempOrthExt = new OrthExt(t, tempAxes, cLeafSet);
+            OrthExt tempOrthExt = new OrthExt(t, tempAxes, cLeafSet, i);
             listOrthants.add(tempOrthExt);
         }
     } //End constructor 1
     
     //constructor 2: admitting unrestricted version
     public ExtensionSpace(PhyloTree t, Vector<String> cLeafSet, boolean restricted){
-        this.originalTree = t;
-        this.completeLeafSet = cLeafSet;
+        this.originalTree = new PhyloTree(t);
+        this.completeLeafSet =  Tools.myVectorCloneString(cLeafSet);
         
-        originalLeaves = new BitSet(cLeafSet.size());
+        originalLeaves = new BitSet(this.completeLeafSet.size());
         Vector<String> oLeafSet = polyAlg.Tools.myVectorCloneString(t.getLeaf2NumMap());
         //orgLeaves2compLeaves = new int[oLeafSet.size()]; 
         
@@ -106,7 +108,7 @@ public class ExtensionSpace{
         
         for (int i = 0; i < numOrthants; i++){
             Vector<Bipartition> tempAxes = connectCluster.getAxes(i);
-            OrthExt tempOrthExt = new OrthExt(t, tempAxes, cLeafSet, restricted);
+            OrthExt tempOrthExt = new OrthExt(t, tempAxes, cLeafSet, restricted, i);
             listOrthants.add(tempOrthExt);
         }
     }// end constructor 2
@@ -192,4 +194,5 @@ public class ExtensionSpace{
     public int getNumOrthants(){
         return this.numOrthants;
     }
+    
 }

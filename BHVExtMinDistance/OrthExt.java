@@ -33,6 +33,8 @@ public class OrthExt{
     
     private PhyloTree startingTree; //Phylogenetic tree right in the "middle" of the extension space. The gradient of descent algorithm to find distances between Extension spaces will start in this tree. 
     
+    private int oID;
+    
     // Extra functions to internally do the construction of the Orthant Extension Space
     
     //Grabs a BitSet representing an axis in the orthant and returns its mapping to the edges of the original tree, i.e. the edge to which the bipartition goes to when performing leaf pruning. 
@@ -59,6 +61,117 @@ public class OrthExt{
         originalTree = t;
         completeLeafSet = cLeafSet;
         orthantAxis = axis;
+        oID = 0;
+        
+        Axis2Edges = new int[axis.size()];
+        for (int i = 0; i < axis.size(); i++){
+            Axis2Edges[i] = -1;
+        }
+        Edges2Axis = new Vector<Integer>();
+        
+        EdgeAttribute[] startingleafEdgeLengths = new EdgeAttribute[cLeafSet.size()];//Leaf edges attributes in the trees in the extension space
+        Vector<String> oLeafSet = polyAlg.Tools.myVectorCloneString(t.getLeaf2NumMap());
+        
+        orgLeaves2compLeaves = new int[oLeafSet.size()];
+        compLeaves2orgLeaves = new int[cLeafSet.size()];
+        originalLeaves = new BitSet(cLeafSet.size());
+        
+        for (int i = 0; i< compLeaves2orgLeaves.length; i++){
+            compLeaves2orgLeaves[i] = -1;
+        }
+        
+        //For the i-th leaf in the original tree, we find its position r in the complete leaf set, and declare the i-th entry in orgLeaves2compLeaves to be r, and the r-th entry in compLeaves2orgLeaves to be i. We also set the r-th entry in the bitset originalLeaves to be true, since this leaf is effectively part of the original tree.
+        for (int i = 0; i < oLeafSet.size(); i++){
+            int temp = cLeafSet.indexOf(oLeafSet.get(i));
+            if (temp == -1){
+                System.err.println("Error: The original tree has a leaf that is not part of the complete leaf set");
+			    System.exit(1);
+            }//end of if
+            orgLeaves2compLeaves[i] = temp;
+            compLeaves2orgLeaves[temp] = i;
+            originalLeaves.set(temp);
+            
+        }//end of for loop
+        
+        //Loop to find all the attributes of the external edges in the "new" tree (the tree after attaching the extra leaves). These attributes coincide with the attributes in the original tree if the leaf was already part of that tree, and it is zero otherwise. 
+        for (int i=0; i < cLeafSet.size(); i++){
+            if(originalLeaves.get(i)){
+                startingleafEdgeLengths[i] = t.getLeafEdgeAttribs()[compLeaves2orgLeaves[i]];
+            } else {
+                EdgeAttribute tempEdgeAttribute = new EdgeAttribute("[0]");
+                startingleafEdgeLengths[i] = tempEdgeAttribute;
+            }
+        }
+        
+        fixedLengths = new double[t.getEdges().size()];
+        
+        //Iteration through the interior edges of the original tree to retrieve the values of the edges to which the coordinates in the orthant inside the extension space have to map to (get added up to be equal to). 
+        Iterator<PhyloTreeEdge> edgesIter = t.getEdges().iterator();
+        int count = 0;
+		while (edgesIter.hasNext()){
+			PhyloTreeEdge e = (PhyloTreeEdge) edgesIter.next();
+			fixedLengths[count] = e.getAttribute().get(0);
+            count++;
+		}
+        
+        mapMatrix = new extMatrix(fixedLengths.length, orthantAxis.size());
+        
+        mapList = new HashMap<Integer, Vector<Integer>>();
+        
+        backMap = new int[axis.size()];
+        
+        for (int i = 0; i< backMap.length; i++){
+            backMap[i] = -1;
+        }
+        
+        Dim = orthantAxis.size() - fixedLengths.length;
+        
+        int[] numEdgesCombined = new int[fixedLengths.length]; //Vector that will record how many edges (coordinates of Axes of the orhans) are being merged to produce the edge in the original tree.
+        
+        //Loop through the interior edges in the original tree and the axes in the current orthant to verify which axis map to each edge, defining the mapping matrix and the number of edges being merged to form the interior edge in the original tree. 
+        for (int i = 0; i < fixedLengths.length; i++){
+            Vector<Integer> tempVect = new Vector<Integer>();
+            for (int j = 0; j < orthantAxis.size(); j++){
+                if (equivalentBip(t.getEdge(i).getOriginalEdge().getPartition(), reducedBitSet(axis.get(j).getPartition()),oLeafSet.size())){
+                    mapMatrix.setItem(i,j,1);
+                    numEdgesCombined[i]++;//We increment the respective vector whenever a new 1 appears in the mapMatrix
+                    tempVect.add(j);
+                    backMap[j] = i;
+                }
+            }
+            mapList.put(i, tempVect);
+        }
+        
+        
+        Vector<PhyloTreeEdge> startingEdges = new Vector<PhyloTreeEdge>(); //Vector of edges for the starting tree.
+        int CountEdges = 0;
+        
+        //We define the attributes of the internal edges in the starting tree as the attribute of the edge in the original tree divided by the number of edges being merged. 
+        for (int j = 0; j < orthantAxis.size(); j++){
+            for (int i = 0; i < fixedLengths.length; i++){
+                if (mapMatrix.element(i,j) == 1){
+                    double[] tempVecEA = {fixedLengths[i]/numEdgesCombined[i]};
+                    EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                    PhyloTreeEdge tempEdge = new PhyloTreeEdge(axis.get(j), tempEA, j);
+                    startingEdges.add(tempEdge);
+                    Axis2Edges[j] = CountEdges;
+                    Edges2Axis.add(Integer.valueOf(j));
+                    CountEdges++;
+                }
+            }
+        }
+        
+        
+        startingTree = new PhyloTree(startingEdges, cLeafSet, startingleafEdgeLengths, false);
+        
+    }//end of constructor 1
+    
+    //Constructor 1 with ID: 
+    public OrthExt(PhyloTree t, Vector<Bipartition> axis, Vector<String> cLeafSet, int oid){
+        originalTree = t;
+        completeLeafSet = cLeafSet;
+        orthantAxis = axis;
+        oID = oid;
         
         Axis2Edges = new int[axis.size()];
         for (int i = 0; i < axis.size(); i++){
@@ -169,6 +282,7 @@ public class OrthExt{
         originalTree = t;
         completeLeafSet = cLeafSet;
         orthantAxis = axis;
+        oID = 0;
         
         Axis2Edges = new int[axis.size()];
         for (int i = 0; i < axis.size(); i++){
@@ -366,6 +480,210 @@ public class OrthExt{
         
     }//end of constructor 2
     
+    //Constructor 2 wiht oID: Allows for new leaves to be attached to external edges. 
+    public OrthExt(PhyloTree t, Vector<Bipartition> axis, Vector<String> cLeafSet, boolean restricted, int oid){
+        originalTree = t;
+        completeLeafSet = cLeafSet;
+        orthantAxis = axis;
+        oID = oid;
+        
+        Axis2Edges = new int[axis.size()];
+        for (int i = 0; i < axis.size(); i++){
+            Axis2Edges[i] = -1;
+        }
+        Edges2Axis = new Vector<Integer>();
+        
+        EdgeAttribute[] startingleafEdgeLengths = new EdgeAttribute[cLeafSet.size()];//Leaf edges attributes in the trees in the extension space
+        Vector<String> oLeafSet = polyAlg.Tools.myVectorCloneString(t.getLeaf2NumMap());
+        
+        orgLeaves2compLeaves = new int[oLeafSet.size()];
+        compLeaves2orgLeaves = new int[cLeafSet.size()];
+        originalLeaves = new BitSet(cLeafSet.size());
+        
+        for (int i = 0; i< compLeaves2orgLeaves.length; i++){
+            compLeaves2orgLeaves[i] = -1;
+        }
+        
+        
+        //For the i-th leaf in the original tree, we find its position r in the complete leaf set, and declare the i-th entry in orgLeaves2compLeaves to be r, and the r-th entry in compLeaves2orgLeaves to be i. We also set the r-th entry in the bitset originalLeaves to be true, since this leaf is effectively part of the original tree.
+        for (int i = 0; i < oLeafSet.size(); i++){
+            int temp = cLeafSet.indexOf(oLeafSet.get(i));
+            if (temp == -1){
+                System.err.println("Error: The original tree has a leaf that is not part of the complete leaf set");
+			    System.exit(1);
+            }//end of if
+            orgLeaves2compLeaves[i] = temp;
+            compLeaves2orgLeaves[temp] = i;
+            originalLeaves.set(temp);
+            
+        }//end of for loop
+        
+        
+        //If restricted == TRUE; then the fixed lenghts focus only on internal branches. 
+        //If restricted == FALSE; then fixed lenghts include the attributes of the original leaves. 
+        if (restricted){
+            fixedLengths = new double[t.getEdges().size()];
+        } else {
+            fixedLengths = new double[oLeafSet.size() + t.getEdges().size()];
+        }
+        
+        
+        //Iteration through the exterior (in the case restricted == false) and interior edges of the original tree to retrieve the values of the edges to which the coordinates in the orthant inside the extension space have to map to (get added up to be equal to).
+        EdgeAttribute[] oLeafAtt = t.getLeafEdgeAttribs();
+        Iterator<PhyloTreeEdge> edgesIter = t.getEdges().iterator();
+        int count = 0;
+        if (restricted == false){
+            for (int i = 0; i < oLeafAtt.length; i++){
+                fixedLengths[count] = oLeafAtt[i].get(0);
+                count++;
+            }
+        }
+		while (edgesIter.hasNext()){
+			PhyloTreeEdge e = (PhyloTreeEdge) edgesIter.next();
+			fixedLengths[count] = e.getAttribute().get(0);
+            count++;
+		}
+        
+        if (restricted){
+            mapMatrix = new extMatrix(fixedLengths.length, orthantAxis.size());
+        } else {
+            mapMatrix = new extMatrix(fixedLengths.length, oLeafSet.size() + orthantAxis.size());
+        }
+        
+        mapList = new HashMap<Integer, Vector<Integer>>();
+        
+        //backMap indicates to which final edge (from original tree) the edge in the extension space is adding to.
+        if (restricted){
+            backMap = new int[axis.size()];
+        } else {
+            backMap = new int[oLeafSet.size() + axis.size()];
+        }
+        
+        for (int i = 0; i< backMap.length; i++){
+            backMap[i] = -1;
+        }
+        
+        if(restricted){
+            Dim = orthantAxis.size() - t.getEdges().size();   
+        } else {
+            Dim = 0;
+        }
+        
+        int[] numEdgesCombined = new int[fixedLengths.length]; //Vector that will record how many edges (coordinates of Axes of the orthans and possibly external edges to original leaves) are being merged to produce the edge in the original tree.
+        
+        //Loop through the interior (and possible exterior) edges in the original tree and the axes (and possibly some of the exterior edges) in the current orthant to verify which axis map to each edge, defining the mapping matrix and the number of edges being merged to form the interior edge in the original tree. 
+        if (restricted){
+            for (int i = 0; i < fixedLengths.length; i++){
+                Vector<Integer> tempVect = new Vector<Integer>();
+                for (int j = 0; j < orthantAxis.size(); j++){
+                    if (equivalentBip(t.getEdge(i).getOriginalEdge().getPartition(), reducedBitSet(axis.get(j).getPartition()),oLeafSet.size())){
+                        mapMatrix.setItem(i,j,1);
+                        numEdgesCombined[i]++;//We increment the respective vector whenever a new 1 appears in the mapMatrix
+                        tempVect.add(j);
+                        backMap[j] = i;
+                    }
+                }
+                mapList.put(i, tempVect);
+            }
+        } else {
+            for (int i = 0; i < oLeafSet.size(); i++){
+                Vector<Integer> tempVect = new Vector<Integer>();
+                mapMatrix.setItem(i,i,1);
+                numEdgesCombined[i]++; 
+                tempVect.add(i);
+                backMap[i] = i;
+                Dim++;
+                BitSet tempExtBitSet = new BitSet(oLeafSet.size());
+                tempExtBitSet.set(i);
+                for (int j = 0; j < orthantAxis.size(); j++){
+                    if (equivalentBip(tempExtBitSet, reducedBitSet(axis.get(j).getPartition()),oLeafSet.size())){
+                        mapMatrix.setItem(i,j+oLeafSet.size(), 1);
+                        numEdgesCombined[i]++;
+                        tempVect.add(j+oLeafSet.size());
+                        backMap[j+oLeafSet.size()] = i;
+                        Dim++;
+                    }
+                }
+                mapList.put(i, tempVect);
+            }
+            for (int i = 0; i < t.getEdges().size(); i++){
+                Vector<Integer> tempVect = new Vector<Integer>();
+                for (int j = 0; j < orthantAxis.size(); j++){
+                    if (equivalentBip(t.getEdge(i).getOriginalEdge().getPartition(), reducedBitSet(axis.get(j).getPartition()),oLeafSet.size())){
+                        mapMatrix.setItem(i+oLeafSet.size(),j+oLeafSet.size(),1);
+                        numEdgesCombined[i+oLeafSet.size()]++;//We increment the respective vector whenever a new 1 appears in the mapMatrix
+                        tempVect.add(j+oLeafSet.size());
+                        backMap[j+oLeafSet.size()] = i+oLeafSet.size();
+                        Dim++;
+                    }
+                }
+                mapList.put(i+oLeafSet.size(), tempVect);
+            }
+            Dim = Dim - (oLeafSet.size() + t.getEdges().size());
+        }
+        
+        
+        Vector<PhyloTreeEdge> startingEdges = new Vector<PhyloTreeEdge>(); //Vector of edges for the starting tree.
+        int CountEdges = 0;
+        //Loop to find all the attributes of the external edges in the "new" tree (the tree after attaching the extra leaves). If restricted == TRUE, these attributes coincide with the attributes in the original tree if the leaf was already part of that tree, and it is zero otherwise. 
+        //If restricted == FALSE, some of the attributes will be shared with external leaves.
+        if (restricted){
+            for (int i=0; i < cLeafSet.size(); i++){
+                if(originalLeaves.get(i)){
+                    startingleafEdgeLengths[i] = t.getLeafEdgeAttribs()[compLeaves2orgLeaves[i]];
+                } else {
+                    EdgeAttribute tempEdgeAttribute = new EdgeAttribute("[0]");
+                    startingleafEdgeLengths[i] = tempEdgeAttribute;
+                }
+            }
+        } else {
+            for (int i=0; i < cLeafSet.size(); i++){
+                if(originalLeaves.get(i)){
+                    double[] tempAtt = new double[]{t.getLeafEdgeAttribs()[compLeaves2orgLeaves[i]].get(0)/numEdgesCombined[compLeaves2orgLeaves[i]]};
+                    startingleafEdgeLengths[i] = new EdgeAttribute(tempAtt);
+                } else {
+                    EdgeAttribute tempEdgeAttribute = new EdgeAttribute("[0]");
+                    startingleafEdgeLengths[i] = tempEdgeAttribute;
+                }
+            }
+        }
+        
+        //We define the attributes of the internal edges in the starting tree as the attribute of the edge in the original tree divided by the number of edges being merged. 
+        if (restricted){
+            for (int j = 0; j < orthantAxis.size(); j++){
+                for (int i = 0; i < fixedLengths.length; i++){
+                    if (mapMatrix.element(i,j) == 1){
+                        double[] tempVecEA = {fixedLengths[i]/numEdgesCombined[i]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        PhyloTreeEdge tempEdge = new PhyloTreeEdge(axis.get(j), tempEA, j);
+                        startingEdges.add(tempEdge);
+                        Axis2Edges[j] = CountEdges;
+                        Edges2Axis.add(Integer.valueOf(j));
+                        CountEdges++;
+                    }
+                }
+            }
+        } else {
+            for (int j = 0; j < orthantAxis.size(); j++){
+                for (int i = 0; i < fixedLengths.length; i++){
+                    if (mapMatrix.element(i,j+oLeafSet.size()) == 1){
+                        double[] tempVecEA = {fixedLengths[i]/numEdgesCombined[i]};
+                        EdgeAttribute tempEA = new EdgeAttribute(tempVecEA);
+                        PhyloTreeEdge tempEdge = new PhyloTreeEdge(axis.get(j), tempEA, j);
+                        startingEdges.add(tempEdge);
+                        Axis2Edges[j] = CountEdges;
+                        Edges2Axis.add(Integer.valueOf(j));
+                        CountEdges++;
+                    }
+                }
+            }   
+        }
+        
+        startingTree = new PhyloTree(startingEdges, cLeafSet, startingleafEdgeLengths, false);
+        
+    }//end of constructor 2
+    
+    
     //Getters and Printers
     public PhyloTree getOriginalTree(){
         return originalTree;
@@ -442,6 +760,10 @@ public class OrthExt{
     
     public int getDim(){
         return Dim;
+    }
+    
+    public int getOID(){
+        return oID;
     }
     
     public PhyloTree getStartTree(){

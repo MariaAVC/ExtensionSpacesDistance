@@ -9,6 +9,10 @@ Part of the package that computes distances between Extension Spaces.
 package BHVExtMinDistance;
 
 import java.util.*;
+import java.util.concurrent.*; 
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 import distanceAlg1.*;
 import static polyAlg.PolyMain.getGeodesic;
 import java.io.File;
@@ -20,8 +24,6 @@ public class ExtensionSpaceDistance{
     //This list will be ordered from the shorter distance to the higher.
     private List<OrthExtDistance> orderedOrthExtDistances;
     //List of the ID's of the orthants in the first and second extension space that are involved in the respective orthant extension distance
-    private List<Integer> OrthantID1;
-    private List<Integer> OrthantID2;
     //The two trees belonging to each of the extension spaces that produces the smaller distance possible.
     private PhyloTree bestTree1;
     private PhyloTree bestTree2;
@@ -33,8 +35,6 @@ public class ExtensionSpaceDistance{
     //Constructor
     public ExtensionSpaceDistance(ExtensionSpace ES1, ExtensionSpace ES2){
         orderedOrthExtDistances = new ArrayList<OrthExtDistance>();
-        OrthantID1 = new ArrayList<Integer>();
-        OrthantID2 = new ArrayList<Integer>();
         
         Vector<OrthExt> OEs1 = ES1.getOrthExts();
         Vector<OrthExt> OEs2 = ES2.getOrthExts();
@@ -54,21 +54,24 @@ public class ExtensionSpaceDistance{
                 //System.out.println("************");
                 //System.out.println("");
                 
+                
                 boolean Added = false;
                 for(int i = 0; i < orderedOrthExtDistances.size(); i++){
                     if (tempOED.getDistance() < orderedOrthExtDistances.get(i).getDistance()){
                         Added = true;
                         orderedOrthExtDistances.add(i, tempOED);
-                        OrthantID1.add(i, k1);
-                        OrthantID2.add(i, k2);
                         break;
                     }
                 }
                 if (!Added){
-                    OrthantID1.add(orderedOrthExtDistances.size(), k1);
-                    OrthantID2.add(orderedOrthExtDistances.size(), k2);
                     orderedOrthExtDistances.add(orderedOrthExtDistances.size(), tempOED);
                 }
+                
+                /*if ((orderedOrthExtDistances.size()>0) && (tempOED.getDistance() <= orderedOrthExtDistances.get(0).getDistance())){
+                    orderedOrthExtDistances.add(0, tempOED);
+                } else {
+                    orderedOrthExtDistances.add(tempOED);
+                }*/
             }
         }
         
@@ -82,46 +85,47 @@ public class ExtensionSpaceDistance{
     //Constructor 2: allowing for unrestricted version
     public ExtensionSpaceDistance(ExtensionSpace ES1, ExtensionSpace ES2, boolean restricted){
         orderedOrthExtDistances = new ArrayList<OrthExtDistance>();
-        OrthantID1 = new ArrayList<Integer>();
-        OrthantID2 = new ArrayList<Integer>();
         
         Vector<OrthExt> OEs1 = ES1.getOrthExts();
         Vector<OrthExt> OEs2 = ES2.getOrthExts();
         
-        int oNum1 = 5;// OEs1.size();
-        int oNum2 = 5; //OEs2.size();
+        int oNum1 = OEs1.size();
+        int oNum2 = OEs2.size();
         
         //For each pair of orthant extensions in the extension spaces we compute the Orthant Extension Distances in between them, find how it compares to the other distances already added to the list, and we add it to the correct position, also adding the orthants that produced this distance to each the list of orthants. 
         for (int k1 = 0; k1 < oNum1; k1++){
             OrthExt OE1 = OEs1.get(k1);
             for (int k2 = 0; k2 < oNum2; k2++){
-                System.out.println("************");
-                System.out.println("STARTING O pair ("+k1+", "+k2+")");
+                //System.out.println("************");
+                //System.out.println("STARTING O pair ("+k1+", "+k2+")");
                 OrthExt OE2 = OEs2.get(k2);
-                long Start = System.currentTimeMillis();
+                //long Start = System.currentTimeMillis();
                 OrthExtDistance tempOED = new OrthExtDistance(OE1, OE2, restricted);
-                long End = System.currentTimeMillis();
-                double TimeSeconds = ((double)(End - Start))/1000;
-                System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
-                System.out.println("Time needed: " + TimeSeconds);
-                System.out.println("************");
-                System.out.println("");
+                //long End = System.currentTimeMillis();
+                //double TimeSeconds = ((double)(End - Start))/1000;
+                //System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
+                //System.out.println("Time needed: " + TimeSeconds);
+                //System.out.println("************");
+                //System.out.println("");
                 
-                boolean Added = false;
+                /*boolean Added = false;
                 for(int i = 0; i < orderedOrthExtDistances.size(); i++){
                     if (tempOED.getDistance() < orderedOrthExtDistances.get(i).getDistance()){
                         Added = true;
                         orderedOrthExtDistances.add(i, tempOED);
-                        OrthantID1.add(i, k1);
-                        OrthantID2.add(i, k2);
                         break;
                     }
                 }
                 if (!Added){
-                    OrthantID1.add(orderedOrthExtDistances.size(), k1);
-                    OrthantID2.add(orderedOrthExtDistances.size(), k2);
                     orderedOrthExtDistances.add(orderedOrthExtDistances.size(), tempOED);
-                }
+                }*/
+                
+                /*if ((orderedOrthExtDistances.size()>0) && (tempOED.getDistance() <= orderedOrthExtDistances.get(0).getDistance())){
+                    orderedOrthExtDistances.add(0, tempOED);
+                } else {
+                    orderedOrthExtDistances.add(orderedOrthExtDistances.size(),tempOED);
+                }*/
+                orderedOrthExtDistances.add(tempOED);
             }
         }
         
@@ -132,18 +136,61 @@ public class ExtensionSpaceDistance{
         bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
     } //end of constructor 2
     
+    //Constructor 3: allowing for unrestricted version and parallelizing 
+    /*public List<OrthExtDistance> ParallelComputation(Vector<OrthExt> OESS1, Vector<OrthExt> OESS2, boolean restricted, int numT) throws InterruptedException, ExecutionException {
+        ExecutorService service = Executors.newFixedThreadPool(numT);
+        
+        List<Future<OrthExtDistance>> futures = new ArrayList<Future<OrthExtDistance>>();
+        for (final OrthExt OE1 : OESS1){
+            for (final OrthExt OE2 : OESS2){
+                Callable<OrthExtDistance> callable = new Callable<OrthExtDistance>(){
+                    public OrthExtDistance call() throws Exception{
+                        OrthExtDistance output = new OrthExtDistance(OE1, OE2, restricted);
+                        return output;
+                    }
+                };
+                futures.add(service.submit(callable));
+            }
+        }
+        
+        service.shutdown();
+
+        List<OrthExtDistance> outputs = new ArrayList<OrthExtDistance>();
+        for (Future<OrthExtDistance> future : futures) {
+            outputs.add(future.get());
+        }
+        return outputs;
+    }*/
+    
+    public ExtensionSpaceDistance(ExtensionSpace ES1, ExtensionSpace ES2, boolean restricted, int numThreads){
+        
+        Vector<OrthExt> OEs1 = ES1.getOrthExts();
+        Vector<OrthExt> OEs2 = ES2.getOrthExts();
+        
+        /*try{
+            orderedOrthExtDistances = ParallelComputation(OEs1, OEs2, restricted, numThreads);
+        }
+        catch(InterruptedException e){
+            System.out.println("An error occurred");
+        }
+        catch(ExecutionException e){
+            System.out.println("An error occurred");
+        }*/
+        
+        orderedOrthExtDistances = OEs1.parallelStream().flatMap(OE1 -> OEs2.parallelStream().map(OE2 -> new OrthExtDistance(OE1, OE2, restricted))).collect(Collectors.toList());
+
+        
+        //The best trees, distance and geodesic will be those at the beginning of our list. 
+        bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
+        bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();
+        Distance = orderedOrthExtDistances.get(0).getDistance();
+        bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
+    } //end of constructor 3*/
+    
     //Printers and Getters
     
     public List<OrthExtDistance> getOOED(){
         return orderedOrthExtDistances;
-    }
-    
-    public List<Integer> getOrthantID1(){
-        return OrthantID1;
-    }
-    
-    public List<Integer> getOrthantID2(){
-        return OrthantID2;
     }
     
     public PhyloTree getBestTree1(){
@@ -165,7 +212,7 @@ public class ExtensionSpaceDistance{
     public void PrintSummary(boolean withTrees, boolean withIterCount){
         System.out.println("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs");
         for(int i = 0; i < orderedOrthExtDistances.size(); i++){
-            System.out.println("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance());
+            System.out.println("Pair "+ (i+1) +": (" + orderedOrthExtDistances.get(i).getO1ID() + ", " + orderedOrthExtDistances.get(i).getO2ID() + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance());
             if (withTrees){
                 PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                 System.out.println("  Best Tree 1: ");
@@ -187,7 +234,7 @@ public class ExtensionSpaceDistance{
         }
         System.out.println("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs");
         for(int i = 0; i < NumOrthants; i++){
-            System.out.println("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance());
+            System.out.println("Pair "+ (i+1) +": (" + orderedOrthExtDistances.get(i).getO1ID() + ", " + orderedOrthExtDistances.get(i).getO2ID() + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance());
             if (withTrees){
                 PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                 System.out.println("  Best Tree 1: ");
@@ -220,7 +267,7 @@ public class ExtensionSpaceDistance{
             FileWriter myWriter = new FileWriter(fileName);
             myWriter.write("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs \n");
             for(int i = 0; i < orderedOrthExtDistances.size(); i++){
-                myWriter.write("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
+                myWriter.write("Pair "+ (i+1) +": (" + orderedOrthExtDistances.get(i).getO1ID() + ", " + orderedOrthExtDistances.get(i).getO2ID() + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
                 if(withTrees){
                     PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                     myWriter.write("  Best Tree 1: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getFirstTree()) + "\n \n");
@@ -261,7 +308,7 @@ public class ExtensionSpaceDistance{
             }
             myWriter.write("There are a total of "+ orderedOrthExtDistances.size()+" orthant pairs \n");
             for(int i = 0; i < NumOrthants; i++){
-                myWriter.write("Pair "+ (i+1) +": (" + OrthantID1.get(i) + ", " + OrthantID2.get(i) + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
+                myWriter.write("Pair "+ (i+1) +": (" + orderedOrthExtDistances.get(i).getO1ID() + ", " + orderedOrthExtDistances.get(i).getO2ID() + ")\n The distance is " + orderedOrthExtDistances.get(i).getDistance() + "\n");
                 if(withTrees){
                     PhyloNicePrinter treePrinter = new PhyloNicePrinter();
                     myWriter.write("  Best Tree 1: \n" + treePrinter.toString(orderedOrthExtDistances.get(i).getFirstTree()) + "\n \n");
@@ -294,7 +341,7 @@ public class ExtensionSpaceDistance{
         for(int i = 0; i < orderedOrthExtDistances.size(); i++){
             List<Integer> adjTemp = new ArrayList<Integer>();
             for(int j = 0; j < orderedOrthExtDistances.size(); j++){
-                if(((OrthantID1.get(i) == OrthantID1.get(j)) && (connectCluster2.getAdjIDsList(OrthantID2.get(i)).contains(OrthantID2.get(j)))) || ((OrthantID2.get(i) == OrthantID2.get(j)) && (connectCluster1.getAdjIDsList(OrthantID1.get(i)).contains(OrthantID1.get(j))))){
+                if(((orderedOrthExtDistances.get(i).getO1ID() == orderedOrthExtDistances.get(j).getO1ID()) && (connectCluster2.getAdjIDsList(orderedOrthExtDistances.get(i).getO2ID()).contains(orderedOrthExtDistances.get(j).getO2ID()))) || ((orderedOrthExtDistances.get(i).getO2ID() == orderedOrthExtDistances.get(j).getO2ID()) && (connectCluster1.getAdjIDsList(orderedOrthExtDistances.get(i).getO1ID()).contains(orderedOrthExtDistances.get(j).getO1ID())))){
                     adjTemp.add(j);
                 }
             }
@@ -313,7 +360,7 @@ public class ExtensionSpaceDistance{
         for(int i = 0; i < orderedOrthExtDistances.size(); i++){
             List<Integer> adjTemp = new ArrayList<Integer>();
             for(int j = 0; j < orderedOrthExtDistances.size(); j++){
-                if((OrthantID1.get(i) == OrthantID1.get(j)) || (connectCluster1.getAdjIDsList(OrthantID1.get(i)).contains(OrthantID1.get(j)))){
+                if((orderedOrthExtDistances.get(i).getO1ID() == orderedOrthExtDistances.get(j).getO1ID()) || (connectCluster1.getAdjIDsList(orderedOrthExtDistances.get(i).getO1ID()).contains(orderedOrthExtDistances.get(j).getO1ID()))){
                     adjTemp.add(j);
                 }
             }
@@ -332,7 +379,7 @@ public class ExtensionSpaceDistance{
         for(int i = 0; i < orderedOrthExtDistances.size(); i++){
             List<Integer> adjTemp = new ArrayList<Integer>();
             for(int j = 0; j < orderedOrthExtDistances.size(); j++){
-                if((connectCluster2.getAdjIDsList(OrthantID2.get(i)).contains(OrthantID2.get(j))) || (OrthantID2.get(i) == OrthantID2.get(j))){
+                if((connectCluster2.getAdjIDsList(orderedOrthExtDistances.get(i).getO2ID()).contains(orderedOrthExtDistances.get(j).getO2ID())) || (orderedOrthExtDistances.get(i).getO2ID() == orderedOrthExtDistances.get(j).getO2ID())){
                     adjTemp.add(j);
                 }
             }

@@ -30,6 +30,9 @@ public class OrthExtDistance{
     private Vector<Integer> cur1Edges2Axis;
     private Vector<Integer> cur2Edges2Axis;
     
+    private int O1ID;// ID's of the Orthants in their respective Orthant Extensions
+    private int O2ID;
+    
     private Map<Integer, Integer> ET1toET2; //These HashMaps serve to point consequential edges towards the common
     private Map<Integer, Integer> ET2toET1; //inconsequential in the other tree. 
     
@@ -771,6 +774,8 @@ public class OrthExtDistance{
     
     
     public OrthExtDistance(OrthExt OE1, OrthExt OE2){
+        O1ID = OE1.getOID();
+        O2ID = OE2.getOID();
         Constructor1(OE1, OE2);
     }
     
@@ -863,6 +868,7 @@ public class OrthExtDistance{
     
     //Constructor 2
     private void Constructor2(OrthExt OE1, OrthExt OE2){
+         synchronized (this) {
         PhyloNicePrinter treePrinter = new PhyloNicePrinter();
         //We start by the starting trees in each orthant extension.
         
@@ -1976,16 +1982,20 @@ public class OrthExtDistance{
         /*System.out.println("   Tree 1: \n" + treePrinter.toString(Tree1)+"\n \n");
         System.out.println("   Tree 2: \n" + treePrinter.toString(Tree2)+"\n \n");
         System.out.println(" With distance " + Distance);*/
+         }
         
     }// end of Constructor 2
     
     public OrthExtDistance(OrthExt OE1, OrthExt OE2, boolean restricted){
+        O1ID = OE1.getOID();
+        O2ID = OE2.getOID();
         if (restricted){
             Constructor1(OE1, OE2);
         } else {
             Constructor2(OE1, OE2);
         }
     }
+    
     
     //Getters & Printers
     public PhyloTree getFirstTree(){
@@ -2006,6 +2016,14 @@ public class OrthExtDistance{
     
     public int getIterCount(){
         return IterCount;
+    }
+    
+    public int getO1ID(){
+        return this.O1ID;
+    }
+    
+    public int getO2ID(){
+        return this.O2ID;
     }
     
     public void PrintSummary(){

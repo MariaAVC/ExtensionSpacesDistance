@@ -94,7 +94,7 @@ public class edgeCrossGraph{
         
         //For each edge in the original tree, we loop through all the ways the extra leaves can be added to both parts of the Bipartition in that edge, and add the resulting edges after doing that to the vertices of the graph. 
         Vector<edgeVertex> VertexList = new Vector<edgeVertex>();
-        Iterator<PhyloTreeEdge> edgesIter = T.getEdges().iterator();
+        Iterator<PhyloTreeEdge> edgesIter = Tools.myVectorClonePhyloTreeEdge(T.getEdges()).iterator();
         
         //counter to assign IDs from 0 to vertexNum - 1. 
         int VertexCount = 0;
@@ -223,7 +223,7 @@ public class edgeCrossGraph{
         
         //For each edge in the original tree, we loop through all the ways the extra leaves can be added to both parts of the Bipartition in that edge, and add the resulting edges after doing that to the vertices of the graph. 
         Vector<edgeVertex> VertexList = new Vector<edgeVertex>();
-        Iterator<PhyloTreeEdge> edgesIter = T.getEdges().iterator();
+        Iterator<PhyloTreeEdge> edgesIter = Tools.myVectorClonePhyloTreeEdge(T.getEdges()).iterator();
         
         //counter to assign IDs from 0 to vertexNum - 1. 
         int VertexCount = 0;
