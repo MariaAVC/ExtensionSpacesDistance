@@ -10,6 +10,7 @@ package BHVExtMinDistance;
 
 import java.util.*;
 import distanceAlg1.*;
+import polyAlg.*;
 
 public class edgeCrossGraph{
     //Adjacency lists that define the graph
@@ -126,8 +127,7 @@ public class edgeCrossGraph{
                 }
                 
                 //System.out.println("One temp Partition for " + VertexCount + " is : " + tempPartition);
-                PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
-                edgeVertex newV = new edgeVertex(VertexCount, newE);
+                edgeVertex newV = new edgeVertex(VertexCount, new Bipartition(tempPartition));
                 VertexList.add(newV);
                 VertexCount++;
             }
@@ -144,11 +144,11 @@ public class edgeCrossGraph{
             List<edgeVertex> tempAdjList = new ArrayList<edgeVertex>();
             while(vertexIter2.hasNext()){
                 edgeVertex potAdj = (edgeVertex) vertexIter2.next();
-                //System.out.println("For the eKey = " + eKey.getEdge().asSplit().toString());
-                //System.out.println("And the potAdj = " + potAdj.getEdge().asSplit().toString());
-                //System.out.println("Disjoint part = " + eKey.getEdge().asSplit().disjointFrom(potAdj.getEdge().asSplit()));
-                //System.out.println("Crosses according to my own function: " + Crosses(eKey.getEdge().asSplit(), potAdj.getEdge().asSplit(), cLeafSet.size()));
-                if (Crosses(eKey.getEdge().asSplit(), potAdj.getEdge().asSplit(), cLeafSet.size())){
+                //System.out.println("For the eKey = " + eKey.getEdge().toString());
+                //System.out.println("And the potAdj = " + potAdj.getEdge().toString());
+                //System.out.println("Disjoint part = " + eKey.getEdge().disjointFrom(potAdj.getEdge()));
+                //System.out.println("Crosses according to my own function: " + Crosses(eKey.getEdge(), potAdj.getEdge(), cLeafSet.size()));
+                if (Crosses(eKey.getEdge(), potAdj.getEdge(), cLeafSet.size())){
                     //System.out.println("It crosses");
                     tempAdjList.add(potAdj);
                 }
@@ -158,13 +158,6 @@ public class edgeCrossGraph{
             orderedVertices.add(eKey);
         }
         
-        //System.out.println("The entire graph is: ");
-        for (edgeVertex keey : adjVertices.keySet()){
-            //System.out.println("For vertex " + keey.toStringVerbose(cLeafSet));
-            for (edgeVertex neigh : adjVertices.get(keey)){
-                System.out.println("     " + neigh.toStringVerbose(cLeafSet));
-            }
-        }
         
         //We initialize the vector of all Maximal Independent Sets, but it will be filled up in an independent function.
         MIS = new ArrayList<Vector<Integer>>();
@@ -252,8 +245,7 @@ public class edgeCrossGraph{
                 if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
                     tempPartition.flip(0,cLeafSet.size());
                 }
-                PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
-                edgeVertex newV = new edgeVertex(VertexCount, newE);
+                edgeVertex newV = new edgeVertex(VertexCount, new Bipartition(tempPartition));
                 VertexList.add(newV);
                 VertexCount++;
             }
@@ -279,8 +271,8 @@ public class edgeCrossGraph{
                     if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
                         tempPartition.flip(0,cLeafSet.size());
                     }
-                    PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
-                    edgeVertex newV = new edgeVertex(VertexCount, newE);
+                    
+                    edgeVertex newV = new edgeVertex(VertexCount, new Bipartition(tempPartition));
                     VertexList.add(newV);
                     VertexCount++;
                 }
@@ -305,8 +297,8 @@ public class edgeCrossGraph{
                     if (tempPartition.get(cLeafSet.size()-1)){//We always use the split not including the last leaf (considered the root as per Megan's Owen code) as the representative
                         tempPartition.flip(0,cLeafSet.size());
                     }
-                    PhyloTreeEdge newE = new PhyloTreeEdge(new Bipartition(tempPartition), new EdgeAttribute(), VertexCount);
-                    edgeVertex newV = new edgeVertex(VertexCount, newE);
+                    
+                    edgeVertex newV = new edgeVertex(VertexCount, new Bipartition(tempPartition));
                     VertexList.add(newV);
                     VertexCount++;
                 }
@@ -324,7 +316,7 @@ public class edgeCrossGraph{
             List<edgeVertex> tempAdjList = new ArrayList<edgeVertex>();
             while(vertexIter2.hasNext()){
                 edgeVertex potAdj = (edgeVertex) vertexIter2.next();
-                if (Crosses(eKey.getEdge().asSplit(), potAdj.getEdge().asSplit(), cLeafSet.size())){
+                if (Crosses(eKey.getEdge(), potAdj.getEdge(), cLeafSet.size())){
                     tempAdjList.add(potAdj);
                 }
             }

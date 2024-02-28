@@ -32,4 +32,12 @@ public class orthantVertex{
         return orthantAxis;
     }
     
+    public Vector<Bipartition> getOrthantAxisClone(){
+        Vector<Bipartition> copyOrthantAxis = new Vector<Bipartition>();
+        for (Bipartition bip : this.orthantAxis){
+            copyOrthantAxis.add(bip.clone());
+        }
+        return copyOrthantAxis;
+    }
+    
 }

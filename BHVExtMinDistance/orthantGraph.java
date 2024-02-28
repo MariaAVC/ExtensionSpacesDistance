@@ -36,7 +36,7 @@ public class orthantGraph{
         for(int i=0; i < vertexNum; i++){
             Vector<Bipartition> tempOAxes = new Vector<Bipartition>();
             for (int j : MIS.get(i)){
-                tempOAxes.add(orderedEdges.get(j).getEdge().asSplit());
+                tempOAxes.add(orderedEdges.get(j).getEdge().clone());
             }
             orthantVertex newVertex = new orthantVertex(i, tempOAxes);
             orderedVertices.add(newVertex);
@@ -83,6 +83,10 @@ public class orthantGraph{
     
     public Vector<Bipartition> getAxes(int k){
         return this.orderedVertices.get(k).getOrthantAxis();
+    }
+    
+    public Vector<Bipartition> getAxesClone(int k){
+        return this.orderedVertices.get(k).getOrthantAxisClone();
     }
     
     public int getVertexNum(){

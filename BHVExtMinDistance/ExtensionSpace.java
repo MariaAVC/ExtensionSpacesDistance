@@ -55,7 +55,7 @@ public class ExtensionSpace{
         //}
         
         //Create the edgeCrossGraph calling its constructor with this tree and complete leaf set.
-        edgeCrossGraph GraphAllEdges = new edgeCrossGraph(t, cLeafSet);
+        edgeCrossGraph GraphAllEdges = new edgeCrossGraph(this.originalTree, this.completeLeafSet);
         
         //Compute the Maximal Independen Sets of the previous graph.
         GraphAllEdges.MIScalculator();
@@ -67,8 +67,8 @@ public class ExtensionSpace{
         listOrthants = new Vector<OrthExt>();
         
         for (int i = 0; i < numOrthants; i++){
-            Vector<Bipartition> tempAxes = connectCluster.getAxes(i);
-            OrthExt tempOrthExt = new OrthExt(t, tempAxes, cLeafSet, i);
+            Vector<Bipartition> tempAxes = connectCluster.getAxesClone(i);
+            OrthExt tempOrthExt = new OrthExt(new PhyloTree(t), tempAxes, Tools.myVectorCloneString(cLeafSet), i);
             listOrthants.add(tempOrthExt);
         }
     } //End constructor 1
@@ -95,7 +95,7 @@ public class ExtensionSpace{
         //}
         
         //Create the edgeCrossGraph calling its constructor with this tree and complete leaf set.
-        edgeCrossGraph GraphAllEdges = new edgeCrossGraph(t, cLeafSet, restricted);
+        edgeCrossGraph GraphAllEdges = new edgeCrossGraph(this.originalTree, this.completeLeafSet, restricted);
         
         //Compute the Maximal Independen Sets of the previous graph.
         GraphAllEdges.MIScalculator();
@@ -107,8 +107,8 @@ public class ExtensionSpace{
         listOrthants = new Vector<OrthExt>();
         
         for (int i = 0; i < numOrthants; i++){
-            Vector<Bipartition> tempAxes = connectCluster.getAxes(i);
-            OrthExt tempOrthExt = new OrthExt(t, tempAxes, cLeafSet, restricted, i);
+            Vector<Bipartition> tempAxes = connectCluster.getAxesClone(i);
+            OrthExt tempOrthExt = new OrthExt(new PhyloTree(t), tempAxes, Tools.myVectorCloneString(cLeafSet), restricted, i);
             listOrthants.add(tempOrthExt);
         }
     }// end constructor 2

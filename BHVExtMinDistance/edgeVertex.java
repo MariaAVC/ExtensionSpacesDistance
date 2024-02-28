@@ -13,17 +13,17 @@ import distanceAlg1.*;
 
 public class edgeVertex{
     private int ID;
-    private PhyloTreeEdge edge;
+    private Bipartition edge;
     
     //Constructor
-    public edgeVertex(int newID, PhyloTreeEdge newEdge){
+    public edgeVertex(int newID, Bipartition newEdge){
         this.ID = newID;
         this.edge = newEdge;
     }
     
     //Getters 
     
-    public PhyloTreeEdge getEdge(){
+    public Bipartition getEdge(){
         return this.edge;
     }
     
