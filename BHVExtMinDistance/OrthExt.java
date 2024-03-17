@@ -683,6 +683,35 @@ public class OrthExt{
         
     }//end of constructor 2
     
+    //Clone Constructor: 
+    public OrthExt(OrthExt OE){
+        this.originalTree = new PhyloTree(OE.getOriginalTree());
+        this.completeLeafSet = polyAlg.Tools.myVectorCloneString(OE.getCompleteLeafSet());
+        this.originalLeaves = (BitSet) OE.getOriginalLeaves().clone();
+        
+        this.orgLeaves2compLeaves = OE.getOrgLeaves2compLeaves().clone();
+        this.compLeaves2orgLeaves = OE.getCompLeaves2orgLeaves().clone();
+        
+        this.orthantAxis = new Vector<Bipartition>();    
+        for (Bipartition bip : OE.getOrthantAxis()){
+            this.orthantAxis.add(bip.clone());
+        }
+        this.Dim = OE.getDim();
+        
+        this.Axis2Edges = OE.getCloneAxis2Edges();
+        this.Edges2Axis = OE.getCloneEdges2Axis();
+        
+        this.fixedLengths = OE.getFixedLengths().clone();
+        this.mapMatrix = new extMatrix(OE.getMapMatrix());
+        
+        this.mapList = OE.getMapListClone();
+        this.backMap = OE.getCloneBackMap();
+        
+        this.startingTree = new PhyloTree(OE.getStartTree());
+        this.oID = OE.getOID();
+        
+    }
+    
     
     //Getters and Printers
     public PhyloTree getOriginalTree(){
@@ -750,12 +779,30 @@ public class OrthExt{
         return mapList;
     }
     
+    public Map<Integer, Vector<Integer>> getMapListClone(){
+        Map<Integer, Vector<Integer>> mapCopy = new HashMap<Integer, Vector<Integer>>();
+        
+        for (Integer key : this.mapList.keySet()){
+            Vector<Integer> intObj = new Vector<Integer>();
+            for (int i  = 0; i < this.mapList.get(key).size(); i++){
+                intObj.add(Integer.valueOf(this.mapList.get(key).get(i)));
+            }
+            mapCopy.put(Integer.valueOf(key),intObj);   
+		}
+        
+        return mapCopy;
+    }
+    
     public int[] getBackMap(){
         return backMap;
     }
     
     public int getBackMap(int i){
         return backMap[i];
+    }
+    
+    public int[] getCloneBackMap(){
+        return this.backMap.clone();
     }
     
     public int getDim(){

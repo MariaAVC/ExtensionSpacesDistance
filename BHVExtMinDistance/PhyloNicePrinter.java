@@ -61,6 +61,81 @@ public class PhyloNicePrinter{
         return("{" + e.getOriginalEdge().toStringVerbose(Leaf2Num) + "|" + eClone.toStringVerbose(Leaf2Num) + "} "+e.getAttribute().toString());
     }
     
+    public String toString(Vector<PhyloTreeEdge> commonEdges, Vector<String> Leaf2Num){
+        DecimalFormat d8o = new DecimalFormat("#0.########");
+        String Print = "The Common Edges are: \n";
+        
+        for (PhyloTreeEdge e : commonEdges) {
+            Bipartition eClone = e.getOriginalEdge().clone();
+            eClone.complement(Leaf2Num.size());
+            Print = Print + "   {" + e.getOriginalEdge().toStringVerbose(Leaf2Num) + "|" + eClone.toStringVerbose(Leaf2Num) + "} " + e.getAttribute().toString() + "\n";
+            /**if (e.getOriginalEdge().getPartition().cardinality() > (Leaf2Num.size()/2)){
+                Bipartition eClone = e.getOriginalEdge().clone();
+                eClone.complement(Leaf2Num.size());
+                Print = Print + "   {" + eClone.toStringVerbose(Leaf2Num)+"} " + e.getAttribute().toString() + "\n";
+            } else {
+                Print = Print + "   {" + e.getOriginalEdge().toStringVerbose(Leaf2Num) + "} " + e.getAttribute().toString() + "\n";
+            }*/
+		}
+        
+        return Print;
+    }
+    
+    public String toString(RatioSequence RS, Vector<String> Leaf2Num){
+        DecimalFormat d8o = new DecimalFormat("#0.########");
+        String Print = "The ratio sequence is: \n";
+        for (int i = 0; i < RS.size(); i++){
+            Ratio rat = RS.getRatio(i);
+            Print = Print + "   [";
+            Vector<PhyloTreeEdge> rEEdges = rat.getEEdges();
+            for (int j = 0; j < rEEdges.size(); j++){
+                PhyloTreeEdge e = rEEdges.get(j);
+                Bipartition eClone = e.getOriginalEdge().clone();
+                eClone.complement(Leaf2Num.size());
+                Print = Print + "{" + e.getOriginalEdge().toStringVerbose(Leaf2Num)+ "|" + eClone.toStringVerbose(Leaf2Num) +"} " + e.getAttribute().toString();
+                /**if (e.getOriginalEdge().getPartition().cardinality() > (Leaf2Num.size()/2)){
+                    Bipartition eClone = e.getOriginalEdge().clone();
+                    eClone.complement(Leaf2Num.size());
+                    Print = Print + "{" + eClone.toStringVerbose(Leaf2Num)+"} " + e.getAttribute().toString();
+                } else {
+                    Print = Print + "{" + e.getOriginalEdge().toStringVerbose(Leaf2Num)+"} " + e.getAttribute().toString();
+                }*/
+                if (j < (rEEdges.size()-1)){
+                    Print = Print + ", ";
+                } else {
+                    Print = Print + "] ";
+                }
+            }
+            
+             Print = Print + d8o.format(rat.getELength()) + "/" + d8o.format(rat.getFLength()) + " [";
+            
+            double ratVal = rat.getELength()/rat.getFLength();
+            
+            Vector<PhyloTreeEdge> rFEdges = rat.getFEdges();
+            for (int j = 0; j < rFEdges.size(); j++){
+                PhyloTreeEdge e = rFEdges.get(j);
+                Bipartition eClone = e.getOriginalEdge().clone();
+                eClone.complement(Leaf2Num.size());
+                Print = Print + "{" + e.getOriginalEdge().toStringVerbose(Leaf2Num)+ "|" + eClone.toStringVerbose(Leaf2Num) +"} " + e.getAttribute().toString();
+                /**if (e.getOriginalEdge().getPartition().cardinality() > (Leaf2Num.size()/2)){
+                    Bipartition eClone = e.getOriginalEdge().clone();
+                    eClone.complement(Leaf2Num.size());
+                    Print = Print + "{" + eClone.toStringVerbose(Leaf2Num)+"} " + e.getAttribute().toString();
+                } else {
+                    Print = Print + "{" + e.getOriginalEdge().toStringVerbose(Leaf2Num)+"} " + e.getAttribute().toString();
+                }*/
+                if (j < (rFEdges.size()-1)){
+                    Print = Print + ", ";
+                } else {
+                    Print = Print + "] --> t = " + d8o.format(ratVal/(1+ratVal)) +" \n";
+                }
+            }
+            
+        }
+        
+        return Print;
+    }
+    
     public String toString(Geodesic Geo, Vector<String> Leaf2Num){
         DecimalFormat d8o = new DecimalFormat("#0.########");
         Vector<PhyloTreeEdge> commonEdges = Geo.getCommonEdges();

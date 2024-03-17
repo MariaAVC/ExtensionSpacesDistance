@@ -10,7 +10,6 @@ package BHVExtMinDistance;
 
 import java.util.*;
 import distanceAlg1.*;
-import static polyAlg.PolyMain.getGeodesic;
 
 public class orthantVertex{
     private int ID;

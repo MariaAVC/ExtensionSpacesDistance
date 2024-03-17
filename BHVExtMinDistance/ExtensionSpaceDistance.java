@@ -14,7 +14,6 @@ import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 import distanceAlg1.*;
-import static polyAlg.PolyMain.getGeodesic;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -24,13 +23,14 @@ public class ExtensionSpaceDistance{
     //This list will be ordered from the shorter distance to the higher.
     private List<OrthExtDistance> orderedOrthExtDistances;
     //List of the ID's of the orthants in the first and second extension space that are involved in the respective orthant extension distance
+    //private OrthExtDistance[] DistancesTemp;
     //The two trees belonging to each of the extension spaces that produces the smaller distance possible.
     private PhyloTree bestTree1;
     private PhyloTree bestTree2;
     //The distance (smaller of the orthant extension distances) between the extension spaces.
     private double Distance;
     //The geodesic between the extension spaces that produces the smaller distance.
-    private Geodesic bestGeode;
+    //private Geodesic bestGeode;
     
     //Constructor
     public ExtensionSpaceDistance(ExtensionSpace ES1, ExtensionSpace ES2){
@@ -79,7 +79,7 @@ public class ExtensionSpaceDistance{
         bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
         bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();
         Distance = orderedOrthExtDistances.get(0).getDistance();
-        bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
+        //bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
     }//end of constructor 
     
     //Constructor 2: allowing for unrestricted version
@@ -133,7 +133,7 @@ public class ExtensionSpaceDistance{
         bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
         bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();
         Distance = orderedOrthExtDistances.get(0).getDistance();
-        bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
+        //bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
     } //end of constructor 2
     
     //Constructor 3: allowing for unrestricted version and parallelizing 
@@ -162,29 +162,88 @@ public class ExtensionSpaceDistance{
         return outputs;
     }*/
     
+    private void processParallelyWithExecutorService(List<orthantExtPair> Input, int numT){// throws InterruptedException {
+    //ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+    //List<CompletableFuture<Void>> futures = new ArrayList<>();
+    
+    final ExecutorService executor = Executors.newFixedThreadPool(numT);
+    List<Future<OrthExtDistance>> futures = new ArrayList<>();
+    
+    for (int i = 0; i < Input.size(); i++) {
+        final orthantExtPair inpT = Input.get(i);
+        try{
+            Future<OrthExtDistance> future = executor.submit(new callableOED(inpT));
+            futures.add(future);
+        } catch (Exception e){
+            System.out.println("This happened " + i);
+            System.out.println(e.getCause());
+        }
+        
+            
+            /*CompletableFuture.runAsync(() -> {
+            //try {
+                DistancesTemp[i] = new OrthExtDistance(inpT, false);
+            /*} catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }, executorService);*/
+    
+    }
+    System.out.println("The length of futures is: " + futures.size());
+    int tempCount = 0;
+    for (Future<OrthExtDistance> future : futures) {
+        tempCount++;
+        try{
+            orderedOrthExtDistances.add(future.get());   
+        } catch (Exception e){
+            System.out.println("Catched " + tempCount);
+            System.out.println(e);
+        }
+    }
+    /*try {
+        for (Future<OrthExtDistance> future : futures) {
+            orderedOrthExtDistances.add(future.get()); // do anything you need, e.g. isDone(), ...
+        }
+    } catch (Exception e) {
+        System.out.println("And this");
+        System.out.println(e);
+    }*/
+    executor.shutdown();
+}
+    
     public ExtensionSpaceDistance(ExtensionSpace ES1, ExtensionSpace ES2, boolean restricted, int numThreads){
+        orderedOrthExtDistances = new ArrayList<OrthExtDistance>();
         
         Vector<OrthExt> OEs1 = ES1.getOrthExts();
         Vector<OrthExt> OEs2 = ES2.getOrthExts();
         
-        /*try{
-            orderedOrthExtDistances = ParallelComputation(OEs1, OEs2, restricted, numThreads);
-        }
-        catch(InterruptedException e){
-            System.out.println("An error occurred");
-        }
-        catch(ExecutionException e){
-            System.out.println("An error occurred");
-        }*/
         
-        orderedOrthExtDistances = OEs1.parallelStream().flatMap(OE1 -> OEs2.parallelStream().map(OE2 -> new OrthExtDistance(OE1, OE2, restricted))).collect(Collectors.toList());
+        List<orthantExtPair> OEpairs = new ArrayList<orthantExtPair>();
+        
+        for (OrthExt OE1 : OEs1){
+            for (OrthExt OE2 : OEs2){
+                OEpairs.add(new orthantExtPair(new OrthExt(OE1), new OrthExt(OE2)));
+            }
+        }
+        
+        //DistancesTemp = new OrthExtDistance[OEpairs.size()];
+        
+        System.out.println("About to run it in 'Parallel'");
+        processParallelyWithExecutorService(OEpairs, numThreads);
+        //orderedOrthExtDistances = OEs1.parallelStream().flatMap(OE1 -> OEs2.parallelStream().map(OE2 -> new OrthExtDistance(OE1, OE2, restricted))).collect(Collectors.toList());
+        
+        //orderedOrthExtDistances = OEpairs.parallelStream().map(OEpair -> new OrthExtDistance(OEpair, false)).collect(Collectors.toList());
+        
+        //for (orthantExtPair OEpar : OEpairs){
+        //    orderedOrthExtDistances.add(new OrthExtDistance(OEpar, restricted));
+        //}
 
         
         //The best trees, distance and geodesic will be those at the beginning of our list. 
         bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
         bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();
         Distance = orderedOrthExtDistances.get(0).getDistance();
-        bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
+        //bestGeode = orderedOrthExtDistances.get(0).getFinalGeode();
     } //end of constructor 3*/
     
     //Printers and Getters
@@ -203,10 +262,6 @@ public class ExtensionSpaceDistance{
     
     public double getDistance(){
         return Distance;
-    }
-    
-    public Geodesic getBestGeodesic(){
-        return bestGeode;
     }
     
     public void PrintSummary(boolean withTrees, boolean withIterCount){

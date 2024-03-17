@@ -18,15 +18,28 @@ public class extMatrix{
     
     //We create a blank matrix with desired dimensions. All entries are set to zero.
     public extMatrix(int rows, int columns){
-    mat = new int[rows][columns];
+        mat = new int[rows][columns];
 
-    for(int i = 0; i < rows; i++){
-        for(int j = 0; j < columns; j++){
-            mat[i][j] = 0;
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < columns; j++){
+                mat[i][j] = 0;
             }
         }
-    nrow = rows;
-    ncol = columns;
+        nrow = rows;
+        ncol = columns;
+    }
+    
+    //Constructor clone
+    public extMatrix(extMatrix cMat){
+        this.nrow = cMat.getNRow();
+        this.ncol = cMat.getNCol();
+        
+        this.mat = new int[this.nrow][this.ncol];
+        for(int i = 0; i < this.nrow; i++){
+            for(int j = 0; j < this.ncol; j++){
+                this.mat[i][j] = cMat.element(i,j); 
+            }
+        }
     }
     
     //Accessors.
@@ -65,8 +78,5 @@ public class extMatrix{
     }
     
     //Useful computations
-    
-    
-    
 
 }

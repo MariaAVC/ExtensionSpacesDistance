@@ -12,7 +12,6 @@ package BHVExtMinDistance;
 import java.util.*;
 import distanceAlg1.*;
 import polyAlg.*;
-import static polyAlg.PolyMain.getGeodesic;
 
 public class OrthExtDistance{
     //Trees in each Orthant extension space from which the shorter geodesic is obtained
@@ -21,7 +20,6 @@ public class OrthExtDistance{
     
     //Shorter distance in between the orthant extension space.
     private double Distance;
-    private Geodesic FinalGeode;//Shorter geodesic
     private int IterCount; //Number of iterations used to compute the distance. 
     
     //Some extra variables to manage current trees in both orthant extension spaces
@@ -86,7 +84,7 @@ public class OrthExtDistance{
         cur2Edges2Axis = OE2.getCloneEdges2Axis();
         
         //Find the the geodesic in between these trees. 
-        Geodesic tempGeode = getGeodesic(T1, T2, null);
+        Geodesic tempGeode = parPolyMain.getGeodesic(T1, T2);
         
         //System.out.println("");
         //System.out.println("PROCESSING THE DISTANCE ALGORITHM... Starting at distance "+ tempGeode.getDist());
@@ -437,7 +435,7 @@ public class OrthExtDistance{
             PhyloTree conjT2 = new PhyloTree(conjEdgesT2, T2.getLeaf2NumMap(), T2.getLeafEdgeAttribs(), false);
             
             //Computing geodesic in between these trees. 
-            Geodesic conjGeode = getGeodesic(conjT1, conjT2, null);
+            Geodesic conjGeode = parPolyMain.getGeodesic(conjT1, conjT2);
             
             RatioSequence conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
@@ -621,7 +619,7 @@ public class OrthExtDistance{
                 T2 = new PhyloTree(newEdgesT2, T2.getLeaf2NumMap(), T2.getLeafEdgeAttribs(), false);
                 
             
-                tempGeode = getGeodesic(T1, T2, null);
+                tempGeode = parPolyMain.getGeodesic(T1, T2);
                 
             } else {//We still need to find the optimum tau for this case. 
                 //System.out.println("We are in the second option");
@@ -660,7 +658,7 @@ public class OrthExtDistance{
                     conjT2 = new PhyloTree(conjEdgesT2, T2.getLeaf2NumMap(), T2.getLeafEdgeAttribs(), false);
                     
                     //Computing geodesic in between these trees. 
-                    conjGeode = getGeodesic(conjT1, conjT2, null);
+                    conjGeode = parPolyMain.getGeodesic(conjT1, conjT2);
             
                     conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
@@ -757,7 +755,7 @@ public class OrthExtDistance{
                 T1 = new PhyloTree(newEdgesT1, T1.getLeaf2NumMap(), T1.getLeafEdgeAttribs(), false);
                 T2 = new PhyloTree(newEdgesT2, T2.getLeaf2NumMap(), T2.getLeafEdgeAttribs(), false);
                 
-                tempGeode = getGeodesic(T1, T2, null);
+                tempGeode = parPolyMain.getGeodesic(T1, T2);
                 
             }
             
@@ -766,7 +764,7 @@ public class OrthExtDistance{
         //Getting the final values after the gradient descent has been performed. 
         Tree1 = T1;
         Tree2 = T2;
-        FinalGeode = tempGeode;
+        Geodesic FinalGeode = tempGeode;
         Distance = FinalGeode.getDist();
         IterCount = iterCount;
         
@@ -777,6 +775,12 @@ public class OrthExtDistance{
         O1ID = OE1.getOID();
         O2ID = OE2.getOID();
         Constructor1(OE1, OE2);
+    }
+    
+    public OrthExtDistance(orthantExtPair orthEP){
+        O1ID = orthEP.getOrthE1().getOID();
+        O2ID = orthEP.getOrthE2().getOID();
+        Constructor1(orthEP.getOrthE1(), orthEP.getOrthE2());
     }
     
     //Second constructor for the unrestricted case. 
@@ -868,7 +872,6 @@ public class OrthExtDistance{
     
     //Constructor 2
     private void Constructor2(OrthExt OE1, OrthExt OE2){
-         synchronized (this) {
         PhyloNicePrinter treePrinter = new PhyloNicePrinter();
         //We start by the starting trees in each orthant extension.
         
@@ -889,7 +892,7 @@ public class OrthExtDistance{
         
         
         //Find the the geodesic in between these trees. 
-        Geodesic tempGeode = getGeodesic(T1, T2, null);
+        Geodesic tempGeode = parPolyMain.getGeodesic(T1, T2);
         
         /*System.out.println("");
         System.out.println("PROCESSING THE DISTANCE ALGORITHM... Starting at distance "+ tempGeode.getDist());
@@ -1414,7 +1417,7 @@ public class OrthExtDistance{
             PhyloTree conjT2 = new PhyloTree(conjEdgesT2, T2.getLeaf2NumMap(), T2LeafEdgeAtt, false);
             
             //Computing geodesic in between these trees. 
-            Geodesic conjGeode = getGeodesic(conjT1, conjT2, null);
+            Geodesic conjGeode = parPolyMain.getGeodesic(conjT1, conjT2);
             
             /*System.out.println("   conjT1: \n" + treePrinter.toString(conjT1)+"\n \n");
             System.out.println("   conjT2: \n" + treePrinter.toString(conjT2)+"\n \n");
@@ -1705,7 +1708,7 @@ public class OrthExtDistance{
                 T1 = new PhyloTree(newEdgesT1, T1.getLeaf2NumMap(), newT1LeafEdgeAtt, false);
                 T2 = new PhyloTree(newEdgesT2, T2.getLeaf2NumMap(), newT2LeafEdgeAtt, false);
             
-                tempGeode = getGeodesic(T1, T2, null);
+                tempGeode = parPolyMain.getGeodesic(T1, T2);
                 
             } else {//We still need to find the optimum tau for this case. 
                 //System.out.println("   So we are still in the same face");
@@ -1786,7 +1789,7 @@ public class OrthExtDistance{
                     System.out.println("      T2_new: \n" + treePrinter.toString(conjT2)+"\n");*/
                     
                     //Computing geodesic in between these trees. 
-                    conjGeode = getGeodesic(conjT1, conjT2, null);
+                    conjGeode = parPolyMain.getGeodesic(conjT1, conjT2);
             
                     conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
@@ -1966,7 +1969,7 @@ public class OrthExtDistance{
                 T1 = new PhyloTree(newEdgesT1, T1.getLeaf2NumMap(), newT1LeafEdgeAtt, false);
                 T2 = new PhyloTree(newEdgesT2, T2.getLeaf2NumMap(), newT2LeafEdgeAtt, false);
             
-                tempGeode = getGeodesic(T1, T2, null);
+                tempGeode = parPolyMain.getGeodesic(T1, T2);
                 
             }
             
@@ -1975,14 +1978,13 @@ public class OrthExtDistance{
         //Getting the final values after the gradient descent has been performed. 
         Tree1 = T1;
         Tree2 = T2;
-        FinalGeode = tempGeode;
+        Geodesic FinalGeode = tempGeode;
         Distance = FinalGeode.getDist();
         IterCount = iterCount;
         
         /*System.out.println("   Tree 1: \n" + treePrinter.toString(Tree1)+"\n \n");
         System.out.println("   Tree 2: \n" + treePrinter.toString(Tree2)+"\n \n");
         System.out.println(" With distance " + Distance);*/
-         }
         
     }// end of Constructor 2
     
@@ -1993,6 +1995,16 @@ public class OrthExtDistance{
             Constructor1(OE1, OE2);
         } else {
             Constructor2(OE1, OE2);
+        }
+    }
+    
+    public OrthExtDistance(orthantExtPair orthEP, boolean restricted){
+        O1ID = orthEP.getOrthE1().getOID();
+        O2ID = orthEP.getOrthE2().getOID();
+        if (restricted){
+            Constructor1(orthEP.getOrthE1(), orthEP.getOrthE2());
+        } else {
+            Constructor2(orthEP.getOrthE1(), orthEP.getOrthE2());
         }
     }
     
@@ -2010,10 +2022,6 @@ public class OrthExtDistance{
         return Distance;
     }
     
-    public Geodesic getFinalGeode(){
-        return FinalGeode;
-    }
-    
     public int getIterCount(){
         return IterCount;
     }
@@ -2028,14 +2036,14 @@ public class OrthExtDistance{
     
     public void PrintSummary(){
         System.out.println("The distance between the orthant extension spaces is " + Distance);
-                PhyloNicePrinter treePrinter = new PhyloNicePrinter();
-                System.out.println("Best Tree 1: ");
-                System.out.println(treePrinter.toString(Tree1));
-                System.out.println("");
-                System.out.println("Best Tree 2: ");
-                System.out.println(treePrinter.toString(Tree2));
-                System.out.println("");
-                System.out.println("Number of iterations for Computation: " + this.IterCount);
+        PhyloNicePrinter treePrinter = new PhyloNicePrinter();
+        System.out.println("Best Tree 1: ");
+        System.out.println(treePrinter.toString(Tree1));
+        System.out.println("");
+        System.out.println("Best Tree 2: ");
+        System.out.println(treePrinter.toString(Tree2));
+        System.out.println("");
+        System.out.println("Number of iterations for Computation: " + this.IterCount);
     }
 }
 

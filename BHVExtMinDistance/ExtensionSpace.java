@@ -11,7 +11,6 @@ package BHVExtMinDistance;
 import java.util.*;
 import distanceAlg1.*;
 import polyAlg.*;
-import static polyAlg.PolyMain.getGeodesic;
 
 
 public class ExtensionSpace{
