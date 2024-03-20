@@ -190,8 +190,8 @@ public static Geodesic getGeodesic(PhyloTree t1, PhyloTree t2) {
         Stack<PhyloTree> stack1 = new Stack<PhyloTree>();
         Stack<PhyloTree> stack2 = new Stack<PhyloTree>();
         
-        stack1.push(new PhyloTree(t1));
-        stack2.push(new PhyloTree(t2));
+        stack1.push(t1);
+        stack2.push(t2);
         
         while(!stack1.empty()){
             PhyloTree currentTree1 = stack1.pop();

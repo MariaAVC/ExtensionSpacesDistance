@@ -9,7 +9,6 @@ package BHVExtMinDistance;
 import java.text.DecimalFormat;
 import java.util.*;
 import distanceAlg1.*;
-import PolyAlg.*;
 
 public class PhyloNicePrinter{
     

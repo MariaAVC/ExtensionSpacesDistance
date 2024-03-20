@@ -54,8 +54,10 @@ public class ExtensionSpaceDistance{
                 //System.out.println("************");
                 //System.out.println("");
                 
+                orderedOrthExtDistances.add(tempOED);
                 
-                boolean Added = false;
+                
+                /*boolean Added = false;
                 for(int i = 0; i < orderedOrthExtDistances.size(); i++){
                     if (tempOED.getDistance() < orderedOrthExtDistances.get(i).getDistance()){
                         Added = true;
@@ -65,7 +67,7 @@ public class ExtensionSpaceDistance{
                 }
                 if (!Added){
                     orderedOrthExtDistances.add(orderedOrthExtDistances.size(), tempOED);
-                }
+                }*/
                 
                 /*if ((orderedOrthExtDistances.size()>0) && (tempOED.getDistance() <= orderedOrthExtDistances.get(0).getDistance())){
                     orderedOrthExtDistances.add(0, tempOED);
@@ -75,6 +77,7 @@ public class ExtensionSpaceDistance{
             }
         }
         
+        Collections.sort(orderedOrthExtDistances, Comparator.comparingDouble(OrthExtDistance::getDistance));
         //The best trees, distance and geodesic will be those at the beginning of our list. 
         bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
         bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();
@@ -129,6 +132,7 @@ public class ExtensionSpaceDistance{
             }
         }
         
+        Collections.sort(orderedOrthExtDistances, Comparator.comparingDouble(OrthExtDistance::getDistance));
         //The best trees, distance and geodesic will be those at the beginning of our list. 
         bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
         bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();
@@ -239,6 +243,7 @@ public class ExtensionSpaceDistance{
         //}
 
         
+        Collections.sort(orderedOrthExtDistances, Comparator.comparingDouble(OrthExtDistance::getDistance));
         //The best trees, distance and geodesic will be those at the beginning of our list. 
         bestTree1 = orderedOrthExtDistances.get(0).getFirstTree();
         bestTree2 = orderedOrthExtDistances.get(0).getSecondTree();

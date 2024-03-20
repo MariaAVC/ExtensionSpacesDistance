@@ -10,7 +10,6 @@ package BHVExtMinDistance;
 
 import java.util.*;
 import distanceAlg1.*;
-import PolyAlg.*;
 
 public class OrthExt{
     private PhyloTree originalTree; //The phylogenetic tree to which leaves are being added. 

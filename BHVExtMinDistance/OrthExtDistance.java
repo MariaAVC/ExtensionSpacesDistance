@@ -22,42 +22,13 @@ public class OrthExtDistance{
     private double Distance;
     private int IterCount; //Number of iterations used to compute the distance. 
     
-    //Some extra variables to manage current trees in both orthant extension spaces
-    private int[] cur1Axis2Edges;
-    private int[] cur2Axis2Edges;
-    private Vector<Integer> cur1Edges2Axis;
-    private Vector<Integer> cur2Edges2Axis;
-    
     private int O1ID;// ID's of the Orthants in their respective Orthant Extensions
     private int O2ID;
     
-    private Map<Integer, Integer> ET1toET2; //These HashMaps serve to point consequential edges towards the common
-    private Map<Integer, Integer> ET2toET1; //inconsequential in the other tree. 
     
-    //Quick function to determine if two BitSets represent the same bipartition.
-    private boolean equivalentBip(BitSet Bit1, BitSet Bit2, int numberLeaves){
-        return (Bit2.equals(Bit1) || ((!Bit2.intersects(Bit1)) && (Bit1.cardinality() + Bit2.cardinality() == numberLeaves)));
-    }
     
-    //Function to remove repeats in Vector of PhyloTree Edges. They sometimes repeat in Common Edges when they present as a split in one tree and its complement in the other. 
-    private Vector<PhyloTreeEdge> RemoveRepeats(Vector<PhyloTreeEdge> vecPTE, int numberLeaves){
-        Vector<PhyloTreeEdge> resVec = Tools.myVectorClonePhyloTreeEdge(vecPTE);
-        
-        int elementsRemoved = 0;
-        for (int i = 0; i < vecPTE.size(); i++){
-            for (int j = i+1; j < vecPTE.size(); j++){
-                if (equivalentBip(vecPTE.get(i).getOriginalEdge().getPartition(),vecPTE.get(j).getOriginalEdge().getPartition(), numberLeaves)){
-                    resVec.remove(i-elementsRemoved);
-                    elementsRemoved++;
-                    break;
-                }
-            }
-        }
-        
-        return(resVec);
-    }
-    
-    //Funcion to determine the edge ID on a tree, dealing with the fact that sometimes the edge will be listed as the complement of the edge in the tree. 
+    //The following function is no longer necessary, every since we standarized all edges to be represented by the split in which the root (the last leaf) is 0. We keep it here in case I need to re-utilize it in future versions of the code. 
+    /*//Funcion to determine the edge ID on a tree, dealing with the fact that sometimes the edge will be listed as the complement of the edge in the tree. 
     private int edgeIDonT(PhyloTreeEdge e, PhyloTree T, int numberLeaves){
         int reID = T.getSplits().indexOf(e.asSplit());
         
@@ -65,10 +36,13 @@ public class OrthExtDistance{
             Bipartition eClone = e.getOriginalEdge().clone();
             eClone.complement(numberLeaves);
             reID = T.getSplits().indexOf(eClone);
+            if (T.getSplits().indexOf(eClone) != -1){
+                System.out.println("It entered the non-problem");
+            }
         }
         
         return(reID);
-    }
+    }*/
     
     //Constructor
     private void Constructor1(OrthExt OE1, OrthExt OE2){
@@ -76,12 +50,6 @@ public class OrthExtDistance{
         //We start by the starting trees in each orthant extension.
         PhyloTree T1 = new PhyloTree(OE1.getStartTree());
         PhyloTree T2 = new PhyloTree(OE2.getStartTree());
-        
-        cur1Axis2Edges = OE1.getCloneAxis2Edges();
-        cur2Axis2Edges = OE2.getCloneAxis2Edges();
-        
-        cur1Edges2Axis = OE1.getCloneEdges2Axis();
-        cur2Edges2Axis = OE2.getCloneEdges2Axis();
         
         //Find the the geodesic in between these trees. 
         Geodesic tempGeode = parPolyMain.getGeodesic(T1, T2);
@@ -440,7 +408,7 @@ public class OrthExtDistance{
             RatioSequence conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
             //And on which common edges they have
-            Vector<PhyloTreeEdge> conjCEs = RemoveRepeats(conjGeode.getCommonEdges(),n+3); 
+            Vector<PhyloTreeEdge> conjCEs = conjGeode.getCommonEdges(); 
             
             
             double derivTau = 0;//Where the final derivative for tau will be saved
@@ -474,8 +442,8 @@ public class OrthExtDistance{
             //For each common edge, we compute the contribution to the derivatives in the gradient. 
         
             for(PhyloTreeEdge e : conjCEs){
-                int eID1 = edgeIDonT(e, conjT1, n+3);
-                int eID2 = edgeIDonT(e, conjT2, n+3);
+                int eID1 = conjT1.getSplits().indexOf(e.asSplit());
+                int eID2 = conjT2.getSplits().indexOf(e.asSplit());
                 
             
                 derivTau += (dDirection1[eID1] - dDirection2[eID2])*(conjT1.getEdge(eID1).getAttribute().get(0) - conjT2.getEdge(eID2).getAttribute().get(0)); //The edge attribute in this case is the value in Tree 1 minus the value in Tree 2. 
@@ -663,7 +631,7 @@ public class OrthExtDistance{
                     conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
                     //And on which common edges they have
-                    conjCEs = RemoveRepeats(conjGeode.getCommonEdges(), n+3); 
+                    conjCEs = conjGeode.getCommonEdges(); 
             
                     derivTau = 0;//Where the final derivative for tau will be saved
                     
@@ -695,8 +663,8 @@ public class OrthExtDistance{
             
                     //For each common edge, we compute the contribution to the derivatives in the gradient. 
                     for(PhyloTreeEdge e : conjCEs){
-                        int eID1 = edgeIDonT(e, conjT1, n+3); 
-                        int eID2 = edgeIDonT(e, conjT2, n+3);
+                        int eID1 = conjT1.getSplits().indexOf(e.asSplit()); 
+                        int eID2 = conjT2.getSplits().indexOf(e.asSplit());
             
                         derivTau += (dDirection1[eID1] - dDirection2[eID2])*(conjT1.getEdge(eID1).getAttribute().get(0) - conjT2.getEdge(eID2).getAttribute().get(0)); //The edge attribute in this case is the value in Tree 1 minus the value in Tree 2. 
                     }
@@ -783,9 +751,9 @@ public class OrthExtDistance{
         Constructor1(orthEP.getOrthE1(), orthEP.getOrthE2());
     }
     
-    //Second constructor for the unrestricted case. 
+    //The following function was used in Constructor2, but now it has been added directly inside the Constructor2 
     
-    private PhyloTree[] NewMutualTrees(OrthExt OE1, OrthExt OE2){
+    /*private PhyloTree[] NewMutualTrees(OrthExt OE1, OrthExt OE2){
         PhyloTree T1 = new PhyloTree(OE1.getStartTree());
         PhyloTree T2 = new PhyloTree(OE2.getStartTree());
         
@@ -858,7 +826,7 @@ public class OrthExtDistance{
                 PhyloTreeEdge tempE = new PhyloTreeEdge(OE2.getOrthantAxis(i), tempEA, T2Edges.size());
                 T2Edges.add(tempE);
             }
-        }*/
+        }
         
         //T1.setEdges(T1Edges);
         //T2.setEdges(T2Edges);
@@ -868,27 +836,77 @@ public class OrthExtDistance{
         NewArray[1] = new PhyloTree(T2Edges, T2.getLeaf2NumMap(), EAT2, false);
         
         return(NewArray);
-    }
+    }*/
     
     //Constructor 2
     private void Constructor2(OrthExt OE1, OrthExt OE2){
         PhyloNicePrinter treePrinter = new PhyloNicePrinter();
         //We start by the starting trees in each orthant extension.
         
-        cur1Axis2Edges = OE1.getCloneAxis2Edges();
-        cur2Axis2Edges = OE2.getCloneAxis2Edges();
+        int[] cur1Axis2Edges = OE1.getCloneAxis2Edges();
+        int[] cur2Axis2Edges = OE2.getCloneAxis2Edges();
         
-        cur1Edges2Axis = OE1.getCloneEdges2Axis();
-        cur2Edges2Axis = OE2.getCloneEdges2Axis();
+        Vector<Integer> cur1Edges2Axis = OE1.getCloneEdges2Axis();
+        Vector<Integer> cur2Edges2Axis = OE2.getCloneEdges2Axis();
         
-        ET1toET2 = new HashMap<>();
-        ET2toET1 = new HashMap<>();
+        Map<Integer, Integer> ET1toET2 = new HashMap<>(); //These HashMaps serve to point consequential edges towards 
+        Map<Integer, Integer> ET2toET1 = new HashMap<>(); // the common inconsequential in the other tree.
         
-        PhyloTree[] NewStartingTrees = NewMutualTrees(OE1, OE2);
+        //We will construct new starting treese that are mutually restricted
+        EdgeAttribute[] EAT1 = OE1.getStartTree().getCopyLeafEdgeAttribs();
+        EdgeAttribute[] EAT2 = OE2.getStartTree().getCopyLeafEdgeAttribs();
         
-        PhyloTree T1 = new PhyloTree(NewStartingTrees[0]);
-        PhyloTree T2 = new PhyloTree(NewStartingTrees[1]);
+        for (int i = 0; i < OE1.getCompleteLeafSet().size(); i++){
+            if ((OE1.getCompLeaves2orgLeaves(i) == -1) && (OE2.getCompLeaves2orgLeaves(i) != -1)){
+                EAT1[i] = EAT2[i].clone();
+            }
+            if ((OE2.getCompLeaves2orgLeaves(i) == -1) && (OE1.getCompLeaves2orgLeaves(i) != -1)){
+                EAT2[i] = EAT1[i].clone();
+            }
+        }
         
+        Vector<PhyloTreeEdge> T1Edges = polyAlg.Tools.myVectorClonePhyloTreeEdge(OE1.getStartTree().getEdges());
+        Vector<PhyloTreeEdge> T2Edges = polyAlg.Tools.myVectorClonePhyloTreeEdge(OE2.getStartTree().getEdges());
+        
+        int orgNumLeaves1 = OE1.getOriginalLeaves().cardinality();
+        int orgNumLeaves2 = OE2.getOriginalLeaves().cardinality();
+        
+        for (int i = orgNumLeaves1; i < OE1.getBackMap().length; i++){
+            if(OE1.getBackMap(i) == -1){
+                for (int j = 0; j < T2Edges.size(); j++){
+                    PhyloTreeEdge e = T2Edges.get(j);
+                    if (e.sameBipartition(OE1.getOrthantAxis(i-orgNumLeaves1))){
+                        cur1Axis2Edges[i-orgNumLeaves1] = T1Edges.size();
+                        cur1Edges2Axis.add(Integer.valueOf(i-orgNumLeaves1));
+                        ET2toET1.put(Integer.valueOf(j), Integer.valueOf(T1Edges.size()));
+                        PhyloTreeEdge eCl = e.clone();
+                        eCl.setOriginalID(T1Edges.size());
+                        T1Edges.add(eCl);
+                    }
+                }
+            }
+        }
+        
+        for (int i = orgNumLeaves2; i < OE2.getBackMap().length; i++){
+            if(OE2.getBackMap(i) == -1){
+                for (int j = 0; j < T1Edges.size(); j++){
+                    PhyloTreeEdge e = T1Edges.get(j);
+                    if (e.sameBipartition(OE2.getOrthantAxis(i-orgNumLeaves2))){
+                        cur2Axis2Edges[i-orgNumLeaves2] = T2Edges.size();
+                        cur2Edges2Axis.add(Integer.valueOf(i-orgNumLeaves2));
+                        ET1toET2.put(Integer.valueOf(j), Integer.valueOf(T2Edges.size()));
+                        PhyloTreeEdge eCl = e.clone();
+                        eCl.setOriginalID(T2Edges.size());
+                        T2Edges.add(eCl);
+                    }
+                }
+            }
+        }
+        
+        PhyloTree T1 = new PhyloTree(T1Edges, OE1.getCompleteLeafSet(), EAT1, false);
+        PhyloTree T2 = new PhyloTree(T2Edges, OE2.getCompleteLeafSet(), EAT2, false);
+        
+        /////////////////////////////////////////
         
         
         //Find the the geodesic in between these trees. 
@@ -1456,13 +1474,9 @@ public class OrthExtDistance{
                 }
             }
             
-            //For each common edge, we compute the contribution to the derivatives in the gradient. 
-            
-            Vector<PhyloTreeEdge> conjCEsReduced = RemoveRepeats(conjCEs, n+3);
-            
-            for(PhyloTreeEdge e : conjCEsReduced){
-                int eID1 = edgeIDonT(e, conjT1, n+3); 
-                int eID2 = edgeIDonT(e, conjT2, n+3); 
+            for(PhyloTreeEdge e : conjCEs){
+                int eID1 = conjT1.getSplits().indexOf(e.asSplit()); 
+                int eID2 = conjT2.getSplits().indexOf(e.asSplit());
                 
                 if ((eID1 == -1) && (eID2 != -1)){
                     //System.out.println("Warning 1.1: " + treePrinter.toString(e, OE1.getCompleteLeafSet()));
@@ -1825,8 +1839,8 @@ public class OrthExtDistance{
                     
                     //For each common edge, we compute the contribution to the derivatives in the gradient. 
                     for(PhyloTreeEdge e : conjCEs){
-                        int eID1 = edgeIDonT(e, conjT1, n+3);
-                        int eID2 = edgeIDonT(e, conjT2, n+3);
+                        int eID1 = conjT1.getSplits().indexOf(e.asSplit());
+                        int eID2 = conjT2.getSplits().indexOf(e.asSplit());
                         
                         if ((eID1 == -1) && (eID2 != -1)){
                             //System.out.println("Warning 2.1: " + treePrinter.toString(e, OE1.getCompleteLeafSet()));
