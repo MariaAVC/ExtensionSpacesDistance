@@ -96,20 +96,29 @@ public class ExtensionSpaceDistance{
         int oNum2 = OEs2.size();
         
         //For each pair of orthant extensions in the extension spaces we compute the Orthant Extension Distances in between them, find how it compares to the other distances already added to the list, and we add it to the correct position, also adding the orthants that produced this distance to each the list of orthants. 
-        for (int k1 = 0; k1 < oNum1; k1++){
+        for (int k1 = 0; k1 < oNum1; k1++){// k1 < oNum1; k1++){
             OrthExt OE1 = OEs1.get(k1);
-            for (int k2 = 0; k2 < oNum2; k2++){
+            for (int k2 = 0; k2 < oNum2; k2++){//k2 < oNum2; k2++){
+                OrthExt OE2 = OEs2.get(k2);
                 //System.out.println("************");
                 //System.out.println("STARTING O pair ("+k1+", "+k2+")");
-                OrthExt OE2 = OEs2.get(k2);
-                //long Start = System.currentTimeMillis();
+                //OE1.printLN();
+                //OE2.printLN();
                 OrthExtDistance tempOED = new OrthExtDistance(OE1, OE2, restricted);
+                //System.out.println("************");
+                //System.out.println("");
+                //if (tempOED.getWarning() != null){
+                    //System.out.println("************");
+                    //System.out.println("STARTING O pair ("+k1+", "+k2+")");
+                    //System.out.println(tempOED.getWarning());
+                    //System.out.println("************");
+                    //System.out.println("");
+                //}
                 //long End = System.currentTimeMillis();
                 //double TimeSeconds = ((double)(End - Start))/1000;
                 //System.out.println("THE DISTANCE WAS "+ tempOED.getDistance());
+                
                 //System.out.println("Time needed: " + TimeSeconds);
-                //System.out.println("************");
-                //System.out.println("");
                 
                 /*boolean Added = false;
                 for(int i = 0; i < orderedOrthExtDistances.size(); i++){
@@ -193,7 +202,7 @@ public class ExtensionSpaceDistance{
         }, executorService);*/
     
     }
-    System.out.println("The length of futures is: " + futures.size());
+    //System.out.println("The length of futures is: " + futures.size());
     int tempCount = 0;
     for (Future<OrthExtDistance> future : futures) {
         tempCount++;
@@ -224,9 +233,11 @@ public class ExtensionSpaceDistance{
         
         List<orthantExtPair> OEpairs = new ArrayList<orthantExtPair>();
         
+        System.out.println("About to create list of pairs to run in 'Parallel'");
+        
         for (OrthExt OE1 : OEs1){
             for (OrthExt OE2 : OEs2){
-                OEpairs.add(new orthantExtPair(new OrthExt(OE1), new OrthExt(OE2)));
+                OEpairs.add(new orthantExtPair(OE1, OE2));
             }
         }
         

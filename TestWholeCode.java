@@ -2,6 +2,8 @@ import java.util.*;
 import distanceAlg1.*;
 import BHVExtMinDistance.*;
 
+import static polyAlg.PolyMain.getGeodesic;
+
 public class TestWholeCode{
     private static PhyloTree StartingTree;
     private static PhyloTree EndingTree;
@@ -9,8 +11,24 @@ public class TestWholeCode{
     
     public static void main(String[] args){
         PhyloNicePrinter nicePrint = new PhyloNicePrinter();
+        StartingTree = new PhyloTree("(L7:7.8,(L1:4.3,L6:4.8):5,(L2:5.2,(L3:5,(L4:4.3,L5:5.3):7.2):4.9):0)",false);
+        EndingTree = new PhyloTree("(L7:7.8,L1:3.9,(L4:4.3,(L3:5,(L6:7.1,(L2:4.4,L5:5.3):0):3.55):3.55):0)",false);
+        
+        System.out.println("Starting Tree: "+ nicePrint.toString(StartingTree));
+        
+        System.out.println("\n Ending Tree: "+ nicePrint.toString(EndingTree));
+        
+        Geodesic tempGeode = getGeodesic(StartingTree, EndingTree, null);
+        
+        Geodesic tempGeode2 = parPolyMain.getGeodesic(StartingTree, EndingTree);
+        
+        System.out.println("Classic Geodesic: "+ nicePrint.toString(tempGeode, StartingTree.getLeaf2NumMap()));
+        
+        System.out.println("My Geodesic: "+ nicePrint.toString(tempGeode2, StartingTree.getLeaf2NumMap()));
+        
+        
         //StartingTree = new PhyloTree("(A:2,E:9,((D:14,(H:8,G:10):31):5,(F:11,C:14):15):21)",false);
-        StartingTree = new PhyloTree("(A:1,B:1,(E:1,(C:1,D:1):3):5)",false);
+        /*StartingTree = new PhyloTree("(A:1,B:1,(E:1,(C:1,D:1):3):5)",false);
         
         System.out.println("Starting Tree: "+ nicePrint.toString(StartingTree));
         
@@ -64,6 +82,6 @@ public class TestWholeCode{
         
         for (int i = 0; i < TestJointNNImap.size(); i++){
             System.out.println("   "+i+": "+TestJointNNImap.get(i));   
-        }
+        }*/
     }
 }

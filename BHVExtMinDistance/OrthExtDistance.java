@@ -25,6 +25,8 @@ public class OrthExtDistance{
     private int O1ID;// ID's of the Orthants in their respective Orthant Extensions
     private int O2ID;
     
+    private String Message;
+    
     
     
     //The following function is no longer necessary, every since we standarized all edges to be represented by the split in which the root (the last leaf) is 0. We keep it here in case I need to re-utilize it in future versions of the code. 
@@ -46,6 +48,7 @@ public class OrthExtDistance{
     
     //Constructor
     private void Constructor1(OrthExt OE1, OrthExt OE2){
+        double TolLimit = 0.00000001; 
         PhyloNicePrinter treePrinter = new PhyloNicePrinter();
         //We start by the starting trees in each orthant extension.
         PhyloTree T1 = new PhyloTree(OE1.getStartTree());
@@ -118,6 +121,10 @@ public class OrthExtDistance{
         
         while ((optimNotReached)){ // && (iterCount<50) 
             iterCount++;
+            if (iterCount == 10000){
+                this.Message = "Warning: Number of iterations reached second threshold (10000) and the process was stopped. The last gradient for free variables was: " + Arrays.toString(gradientxs1) + " " + Arrays.toString(gradientxs2);
+                break;
+            }
             /**
             System.out.println(":::: ITERATION "+iterCount+"::::");
             System.out.println("   T1: \n" + treePrinter.toString(T1)+"\n \n");
@@ -130,7 +137,7 @@ public class OrthExtDistance{
             System.out.println("   N2 = " + N2);
             System.out.println("");*/
             
-            if (conjugate_initial_counter > S1.size() + S2.size()){
+            if (conjugate_initial_counter > 15){
                 conjugate_initial_counter = 0;
             }
             //System.out.println("Iteration number " + iterCount);
@@ -218,19 +225,22 @@ public class OrthExtDistance{
             gradientxs1 = new double[S1.size()];
             gradientxs2 = new double[S2.size()];
         
-            dDirectionxs1 = new double[S1.size()];
-            dDirectionxs2 = new double[S2.size()];
+            
+            if (iterCount == 2000){
+                this.Message = "Warning: Number of iterations reached first threshold (2000) and the tolerance for the gradient was increased to 0.001";
+                TolLimit = 0.001;
+            }
             
             for (int i = 0; i < S1.size(); i++){
                 gradientxs1[i] = gradient1[S1.get(i)] - gradient1[B1.get(OE1.getBackMap(S1.get(i)))];
-                if((gradientxs1[i] < -0.00000001) || (gradientxs1[i] > 0.00000001)){
+                if((gradientxs1[i] < -TolLimit) || (gradientxs1[i] > TolLimit)){
                     gradient_small = false;
                 }
             }
             
             for (int i = 0; i < S2.size(); i++){
                 gradientxs2[i] = gradient2[S2.get(i)] - gradient2[B2.get(OE2.getBackMap(S2.get(i)))];
-                if((gradientxs2[i] < -0.00000001) || (gradientxs2[i] > 0.00000001)){
+                if((gradientxs2[i] < -TolLimit) || (gradientxs2[i] > TolLimit)){
                     gradient_small = false;
                 }
             }
@@ -279,6 +289,8 @@ public class OrthExtDistance{
             //We know need to determine the best direction of change depending on whether we are in the first iteration of a re=initialization of the conjutage gradient method or not
             
             if (conjugate_initial_counter == 0){
+                dDirectionxs1 = new double[S1.size()];
+                dDirectionxs2 = new double[S2.size()];
                 for (int i = 0; i < dDirectionxs1.length; i++){
                     dDirectionxs1[i] = -gradientxs1[i];
                 }
@@ -463,6 +475,7 @@ public class OrthExtDistance{
                     int[] IndexListOrdered = new int[potentialN1.size()];
                     int leftInd = 0;
                     int rightInd = potentialN1.size() - 1;
+                    boolean AllN1Already = true;
                     for (int i = 0; i < potentialN1.size(); i++){
                         if (alreadyN1.contains(potentialN1.get(i))){
                             IndexListOrdered[rightInd] = i;
@@ -470,13 +483,19 @@ public class OrthExtDistance{
                         } else {
                             IndexListOrdered[leftInd] = i;
                             leftInd++;
+                            AllN1Already = false;
                         }
+                    }
+                    if (AllN1Already){
+                        Collections.shuffle(potentialN1);
                     }
                     for (int i : IndexListOrdered){
                         if (S1.contains(potentialN1.get(i))){
                             N1.add(potentialN1.get(i));
+                            alreadyN1.add(potentialN1.get(i));
                             S1.remove(Integer.valueOf(potentialN1.get(i)));
                             ChangeInIndexMade = true;
+                            break;
                         } else if (B1.contains(potentialN1.get(i))){
                             int rowIndexTemp = B1.indexOf(potentialN1.get(i));
                             int newB1element = -1; 
@@ -486,12 +505,11 @@ public class OrthExtDistance{
                                     break;
                                 }
                             }
-                            if (newB1element == -1){
-                                System.out.println("ERROR: No superbasic variable to replace the one in B1 at : " + i);
-                            } else {
+                            if (newB1element != -1){
                                 B1.set(rowIndexTemp, newB1element);
                                 S1.remove(Integer.valueOf(newB1element));
                                 N1.add(potentialN1.get(i));
+                                alreadyN1.add(potentialN1.get(i));
                                 ChangeInIndexMade = true;
                                 break;
                             }
@@ -503,6 +521,7 @@ public class OrthExtDistance{
                     int[] IndexListOrdered = new int[potentialN2.size()];
                     int leftInd = 0;
                     int rightInd = potentialN2.size() - 1;
+                    boolean AllN2Already = true;
                     for (int i = 0; i < potentialN2.size(); i++){
                         if (alreadyN2.contains(potentialN2.get(i))){
                             IndexListOrdered[rightInd] = i;
@@ -510,13 +529,19 @@ public class OrthExtDistance{
                         } else {
                             IndexListOrdered[leftInd] = i;
                             leftInd++;
+                            AllN2Already = false;
                         }
+                    }
+                    if (AllN2Already){
+                        Collections.shuffle(potentialN2);
                     }
                     for (int i : IndexListOrdered){
                         if (S2.contains(potentialN2.get(i))){
                             N2.add(potentialN2.get(i));
+                            alreadyN2.add(potentialN2.get(i));
                             S2.remove(Integer.valueOf(potentialN2.get(i)));
                             ChangeInIndexMade = true;
+                            break;
                         } else if (B2.contains(potentialN2.get(i))){
                             int rowIndexTemp = B2.indexOf(potentialN2.get(i));
                             int newB2element = -1; 
@@ -526,12 +551,11 @@ public class OrthExtDistance{
                                     break;
                                 }
                             }
-                            if (newB2element == -1){
-                                System.out.println("ERROR: No superbasic variable to replace the one in B2 at : "+ i);
-                            } else {
+                            if (newB2element != -1){
                                 B2.set(rowIndexTemp, newB2element);
                                 S2.remove(Integer.valueOf(newB2element));
                                 N2.add(potentialN2.get(i));
+                                alreadyN2.add(potentialN2.get(i));
                                 ChangeInIndexMade = true;
                                 break;
                             }
@@ -601,7 +625,7 @@ public class OrthExtDistance{
                 //System.out.println("tau max: "+ tau_max);
                 //System.out.println("tau min: "+ tau_min);
                 //System.out.println("tau value before while: "+ tau);
-                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001))){ //&&(counterWhile < 50)
+                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001)) && (((tau_max - tau_min) > 0.0000000001))){ //&&(counterWhile < 50)
                     counterWhile++;
                     //System.out.println("   Inside the tau while loop "+counterWhile);
                     tau = (tau_max + tau_min)/2;
@@ -808,7 +832,7 @@ public class OrthExtDistance{
                     }
                 }
             }
-        }
+        }*/
         
         /*for(int i = 0; i < OE1.getOrthantAxis().size(); i++){
             if(cur1Axis2Edges[i] == -1){
@@ -839,7 +863,8 @@ public class OrthExtDistance{
     }*/
     
     //Constructor 2
-    private void Constructor2(OrthExt OE1, OrthExt OE2){
+    private void Constructor2(OrthExt OE1, OrthExt OE2){  
+        double TolLimit = 0.00000001;
         PhyloNicePrinter treePrinter = new PhyloNicePrinter();
         //We start by the starting trees in each orthant extension.
         
@@ -912,12 +937,12 @@ public class OrthExtDistance{
         //Find the the geodesic in between these trees. 
         Geodesic tempGeode = parPolyMain.getGeodesic(T1, T2);
         
-        /*System.out.println("");
-        System.out.println("PROCESSING THE DISTANCE ALGORITHM... Starting at distance "+ tempGeode.getDist());
-        System.out.println("With T1: " + treePrinter.toString(T1) + "\n");
-        System.out.println("With T2: " + treePrinter.toString(T2) + "\n");
+        //System.out.println("");
+        //System.out.println("PROCESSING THE DISTANCE ALGORITHM... Starting at distance "+ tempGeode.getDist());
+        //System.out.println("With T1: " + treePrinter.toString(T1) + "\n");
+        //System.out.println("With T2: " + treePrinter.toString(T2) + "\n");
         
-        System.out.println("The number of ratios is: " + tempGeode.getRS().size());*/
+       // System.out.println("The number of ratios is: " + tempGeode.getRS().size());
         
         //Some useful counters
         int k1 = OE1.getDim();//Dimension of the first Orthant Extension Space
@@ -1011,18 +1036,23 @@ public class OrthExtDistance{
         while ((optimNotReached)){ // && (iterCount<2)
             iterCount++;
             
-            /*System.out.println(":::: ITERATION " + iterCount + "::::");
-            System.out.println("   T1: \n" + treePrinter.toString(T1)+"\n \n");
-            System.out.println("   T2: \n" + treePrinter.toString(T2)+"\n \n");
-            System.out.println("   B1 = " + B1);
-            System.out.println("   S1 = " + S1);
-            System.out.println("   N1 = " + N1);
-            System.out.println("   B2 = " + B2);
-            System.out.println("   S2 = " + S2);
-            System.out.println("   N2 = " + N2);
-            System.out.println("");*/
+            if (iterCount == 10000){
+                this.Message = "Warning: Number of iterations reached second threshold (10000) and the process was stopped. The last gradient for free variables was: " + Arrays.toString(gradientxs1) + " " + Arrays.toString(gradientxs2);
+                break;
+            }
             
-            if (conjugate_initial_counter > S1.size() + S2.size()){
+            //System.out.println(":::: ITERATION " + iterCount + "::::");
+            //System.out.println("   T1: \n" + treePrinter.toString(T1)+"\n \n");
+            //System.out.println("   T2: \n" + treePrinter.toString(T2)+"\n \n");
+            //System.out.println("   B1 = " + B1);
+            //System.out.println("   S1 = " + S1);
+            //System.out.println("   N1 = " + N1);
+            //System.out.println("   B2 = " + B2);
+            //System.out.println("   S2 = " + S2);
+            //System.out.println("   N2 = " + N2);
+            //System.out.println("");
+            
+            if (conjugate_initial_counter > 15){
                 conjugate_initial_counter = 0;
             }
             //System.out.println("Iteration number " + iterCount);
@@ -1034,7 +1064,7 @@ public class OrthExtDistance{
             //System.out.println("The geodesic summary is: " + treePrinter.toString(tempGeode, OE1.getCompleteLeafSet()));
             
             /*System.out.println("   T1: \n" + treePrinter.toString(T1)+"\n \n");
-            System.out.println("   T2: \n" + treePrinter.toString(T2)+"\n \n");
+            //System.out.println("   T2: \n" + treePrinter.toString(T2)+"\n \n");
             
             System.out.println("Reviewing which edge 'crosses'  the BG edge: ");
             PhyloTreeEdge edgeTemp = T2.getEdge(3);
@@ -1149,6 +1179,7 @@ public class OrthExtDistance{
             
             double[] gradientxs1Prev = gradientxs1.clone();
             double[] gradientxs2Prev = gradientxs2.clone();
+            
             double akDenom = 0;
             
             if (conjugate_initial_counter > 0){
@@ -1162,16 +1193,27 @@ public class OrthExtDistance{
             
             boolean gradient_small = true; // as we compute the new gradient, we assess if the size is big enough to justify another loop or we have arrive to an stationary point. 
             
+            gradientxs1 = new double[S1.size()];
+            gradientxs2 = new double[S2.size()];
+        
+            //dDirectionxs1 = new double[S1.size()];
+            //dDirectionxs2 = new double[S2.size()];
+            
+            if (iterCount == 2000){
+                this.Message = "Warning: Number of iterations reached first threshold (2000) and the tolerance for the gradient was increased to 0.001";
+                TolLimit = 0.001;
+            }
+            
             for (int i = 0; i < S1.size(); i++){
                 gradientxs1[i] = gradient1[IVI1[S1.get(i)]] - gradient1[IVI1[B1.get(OE1.getBackMap(S1.get(i)))]];
-                if((gradientxs1[i] < -0.00000001) || (gradientxs1[i] > 0.00000001)){
+                if((gradientxs1[i] < -TolLimit) || (gradientxs1[i] > TolLimit)){
                     gradient_small = false;
                 }
             }
             
             for (int i = 0; i < S2.size(); i++){
                 gradientxs2[i] = gradient2[IVI2[S2.get(i)]] - gradient2[IVI2[B2.get(OE2.getBackMap(S2.get(i)))]];
-                if((gradientxs2[i] < -0.00000001) || (gradientxs2[i] > 0.00000001)){
+                if((gradientxs2[i] < -TolLimit) || (gradientxs2[i] > TolLimit)){
                     gradient_small = false;
                 }
             }
@@ -1220,6 +1262,9 @@ public class OrthExtDistance{
             //We know need to determine the best direction of change depending on whether we are in the first iteration of a re=initialization of the conjutage gradient method or not
             
             if (conjugate_initial_counter == 0){
+                //System.out.println("Should be equal");
+                dDirectionxs1 = new double[S1.size()];
+                dDirectionxs2 = new double[S2.size()];
                 for (int i = 0; i < dDirectionxs1.length; i++){
                     dDirectionxs1[i] = -gradientxs1[i];
                 }
@@ -1236,6 +1281,7 @@ public class OrthExtDistance{
                 }
                 
                 double ak = akNum/akDenom;
+                //System.out.println("ak is " + ak);
                 
                 for (int i = 0; i < gradientxs1.length; i++){
                     dDirectionxs1[i] = ak*dDirectionxs1[i] - gradientxs1[i];
@@ -1284,7 +1330,7 @@ public class OrthExtDistance{
                     //System.out.println("For ol1 " + i + "it found dDirection1 < 0");
                     if(tauNeedsChange || (-T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[IVI1[i]] < tau_max)){
                         tau_max = -T1.getLeafEdgeAttribs()[OE1.getOrgLeaves2compLeaves(i)].get(0)/dDirection1[IVI1[i]];
-                        //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection1[IVI1[i]]);
+                        //System.out.println("Tau max changed in ol1 by " + i);
                         if (!N1.contains(i)){
                             potentialN1.clear();
                             potentialN1.add(i);
@@ -1306,7 +1352,7 @@ public class OrthExtDistance{
                     //System.out.println("For ol2 " + i + "it found dDirection2 < 0");
                     if(tauNeedsChange || (-T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[IVI2[i]] < tau_max)){
                         tau_max = -T2.getLeafEdgeAttribs()[OE2.getOrgLeaves2compLeaves(i)].get(0)/dDirection2[IVI2[i]];
-                         //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection2[IVI2[i]]);
+                        //System.out.println("Tau max changed in ol2 by " + i);
                         if (!N2.contains(i)){
                             potentialN2.clear();
                             potentialN2.add(i);
@@ -1330,19 +1376,19 @@ public class OrthExtDistance{
                         //System.out.println("For cur1Edges2Axis " + i + "it found dDirection1 < 0");
                         if(tauNeedsChange || (-EdgesT1.get(i).getNorm()/dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]] < tau_max)){
                             tau_max = -EdgesT1.get(i).getNorm()/dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]];
-                            //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]]);
+                            //System.out.println("Tau max changed in cur1Edges2axis by " + cur1Edges2Axis.get(i));
                             if (!N1.contains(cur1Edges2Axis.get(i)+ol1)){
                                 potentialN1.clear();
                                 potentialN1.add(cur1Edges2Axis.get(i)+ol1);
                             } else {
-                                System.out.println("An element on N1 sneaked in (situation 1): "+ (cur1Edges2Axis.get(i)+ol1));
+                                //System.out.println("An element on N1 sneaked in (situation 1): "+ (cur1Edges2Axis.get(i)+ol1));
                             }
                             tauNeedsChange = false;
                         } else if (-EdgesT1.get(i).getNorm()/dDirection1[IVI1[cur1Edges2Axis.get(i) + ol1]] == tau_max){
                             if (!N1.contains(cur1Edges2Axis.get(i)+ol1)){
                                 potentialN1.add(cur1Edges2Axis.get(i)+ol1);
                             }else {
-                                System.out.println("An element on N1 sneaked in (situation 2): "+ (cur1Edges2Axis.get(i)+ol1));
+                                //System.out.println("An element on N1 sneaked in (situation 2): "+ (cur1Edges2Axis.get(i)+ol1));
                             }  
                         }
                     }
@@ -1355,20 +1401,20 @@ public class OrthExtDistance{
                         //System.out.println("For cur2Edges2Axis " + i + "it found dDirection2 < 0");
                         if (tauNeedsChange || (-EdgesT2.get(i).getNorm()/dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]] < tau_max)){
                             tau_max = -EdgesT2.get(i).getNorm()/dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]];
-                            //System.out.println("And the value seems to be taking " + tau_max + "with ddir " + dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]]);
+                            //System.out.println("Tau max changed in cur2Edges2axis by " + cur1Edges2Axis.get(i));
                             if (!N2.contains(cur2Edges2Axis.get(i) + ol2)){
                                 potentialN1.clear();
                                 potentialN2.clear();
                                 potentialN2.add(cur2Edges2Axis.get(i) + ol2);
                             } else{
-                                System.out.println("An element on N2 sneaked in (situation 1): "+ (cur2Edges2Axis.get(i) + ol2));
+                                //System.out.println("An element on N2 sneaked in (situation 1): "+ (cur2Edges2Axis.get(i) + ol2));
                             }
                             tauNeedsChange = false;
                         } else if (-EdgesT2.get(i).getNorm()/dDirection2[IVI2[cur2Edges2Axis.get(i) + ol2]] == tau_max){
                             if (!N2.contains(cur2Edges2Axis.get(i) + ol2)){
                                 potentialN2.add(cur2Edges2Axis.get(i) + ol2);
                             } else{
-                                System.out.println("An element on N2 sneaked in (situation 2): "+ (cur2Edges2Axis.get(i) + ol2));
+                                //System.out.println("An element on N2 sneaked in (situation 2): "+ (cur2Edges2Axis.get(i) + ol2));
                             }
                         }
                     }
@@ -1437,10 +1483,9 @@ public class OrthExtDistance{
             //Computing geodesic in between these trees. 
             Geodesic conjGeode = parPolyMain.getGeodesic(conjT1, conjT2);
             
-            /*System.out.println("   conjT1: \n" + treePrinter.toString(conjT1)+"\n \n");
-            System.out.println("   conjT2: \n" + treePrinter.toString(conjT2)+"\n \n");
-            System.out.println("The geodesic summary is: " + treePrinter.toString(conjGeode, OE1.getCompleteLeafSet()));
-            */
+            //System.out.println("   conjT1: \n" + treePrinter.toString(conjT1)+"\n \n");
+            //System.out.println("   conjT2: \n" + treePrinter.toString(conjT2)+"\n \n");
+            //System.out.println("The geodesic summary is: " + treePrinter.toString(conjGeode, OE1.getCompleteLeafSet()));
             
             RatioSequence conjRSeq = conjGeode.getRS();//The derivative will depend on the ratio sequence 
             
@@ -1507,6 +1552,11 @@ public class OrthExtDistance{
             
             if (derivTau <= 0){//In this case the minimum is reached right at the tau_max limit and the search is over.
                 //System.out.println("   So it hitted a face");
+                //System.out.println("    Potential N1 is " + potentialN1);
+                //System.out.println("    Potential N2 is " + potentialN2);
+                
+                //System.out.println("    Already N1 is " + alreadyN1);
+                //System.out.println("    Already N2 is " + alreadyN2);
                 tau = tau_max;
                 boolean ChangeInIndexMade = false;
                 
@@ -1517,6 +1567,7 @@ public class OrthExtDistance{
                     int[] IndexListOrdered = new int[potentialN1.size()];
                     int leftInd = 0;
                     int rightInd = potentialN1.size() - 1;
+                    boolean AllN1Already = true;
                     for (int i = 0; i < potentialN1.size(); i++){
                         if (alreadyN1.contains(potentialN1.get(i))){
                             IndexListOrdered[rightInd] = i;
@@ -1524,13 +1575,19 @@ public class OrthExtDistance{
                         } else {
                             IndexListOrdered[leftInd] = i;
                             leftInd++;
+                            AllN1Already = false;
                         }
+                    }
+                    if (AllN1Already){
+                        Collections.shuffle(potentialN1);
                     }
                     for (int i : IndexListOrdered){
                         if (S1.contains(potentialN1.get(i))){
                             N1.add(potentialN1.get(i));
+                            alreadyN1.add(potentialN1.get(i));
                             S1.remove(Integer.valueOf(potentialN1.get(i)));
                             ChangeInIndexMade = true;
+                            break;
                         } else if (B1.contains(potentialN1.get(i))){
                             int rowIndexTemp = B1.indexOf(potentialN1.get(i));
                             int newB1element = -1; 
@@ -1540,16 +1597,14 @@ public class OrthExtDistance{
                                     break;
                                 }
                             }
-                            if (newB1element == -1){
-                                System.out.println("ERROR: No superbasic variable to replace the one in B1 at : " + i);
-                            } else {
+                            if (newB1element != -1){
                                 B1.set(rowIndexTemp, newB1element);
                                 S1.remove(Integer.valueOf(newB1element));
                                 N1.add(potentialN1.get(i));
+                                alreadyN1.add(potentialN1.get(i));
                                 ChangeInIndexMade = true;
                                 break;
                             }
-                        
                         }
                     }
                 } else if (potentialN2.size() > 0){
@@ -1557,6 +1612,7 @@ public class OrthExtDistance{
                     int[] IndexListOrdered = new int[potentialN2.size()];
                     int leftInd = 0;
                     int rightInd = potentialN2.size() - 1;
+                    boolean AllN2Already = true;
                     for (int i = 0; i < potentialN2.size(); i++){
                         if (alreadyN2.contains(potentialN2.get(i))){
                             IndexListOrdered[rightInd] = i;
@@ -1564,13 +1620,19 @@ public class OrthExtDistance{
                         } else {
                             IndexListOrdered[leftInd] = i;
                             leftInd++;
+                            AllN2Already = false;
                         }
+                    }
+                    if (AllN2Already){
+                        Collections.shuffle(potentialN2);
                     }
                     for (int i : IndexListOrdered){
                         if (S2.contains(potentialN2.get(i))){
                             N2.add(potentialN2.get(i));
+                            alreadyN2.add(potentialN2.get(i));
                             S2.remove(Integer.valueOf(potentialN2.get(i)));
                             ChangeInIndexMade = true;
+                            break;
                         } else if (B2.contains(potentialN2.get(i))){
                             int rowIndexTemp = B2.indexOf(potentialN2.get(i));
                             int newB2element = -1; 
@@ -1580,12 +1642,11 @@ public class OrthExtDistance{
                                     break;
                                 }
                             }
-                            if (newB2element == -1){
-                                System.out.println("ERROR: No superbasic variable to replace the one in B2 at : "+ i);
-                            } else {
+                            if (newB2element != -1){
                                 B2.set(rowIndexTemp, newB2element);
                                 S2.remove(Integer.valueOf(newB2element));
                                 N2.add(potentialN2.get(i));
+                                alreadyN2.add(potentialN2.get(i));
                                 ChangeInIndexMade = true;
                                 break;
                             }
@@ -1732,7 +1793,7 @@ public class OrthExtDistance{
                     tau = tau_max/2;
                 }
                 //System.out.println("    Prev tau = " + tau);
-                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001)) && (((tau_max - tau_min) > 0.00000000000001))){ //&&(counterWhile < 50)
+                while(((derivTau < -0.0000000000000001) || (derivTau > 0.0000000000000001)) && (((tau_max - tau_min) > 0.0000000001))){ //&&(counterWhile < 50)
                     counterWhile++;
                     //System.out.println("   INSIDE the tau while loop " + counterWhile);
                     tau = (tau_max + tau_min)/2;
@@ -1984,6 +2045,7 @@ public class OrthExtDistance{
                 T2 = new PhyloTree(newEdgesT2, T2.getLeaf2NumMap(), newT2LeafEdgeAtt, false);
             
                 tempGeode = parPolyMain.getGeodesic(T1, T2);
+                //System.out.println("The final tau was " + tau);
                 
             }
             
@@ -2046,6 +2108,10 @@ public class OrthExtDistance{
     
     public int getO2ID(){
         return this.O2ID;
+    }
+    
+    public String getWarning(){
+        return this.Message;
     }
     
     public void PrintSummary(){
